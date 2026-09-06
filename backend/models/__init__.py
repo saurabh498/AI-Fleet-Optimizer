@@ -1,0 +1,7 @@
+from backend.models.truck import Truck
+from backend.models.shipment import Shipment
+from backend.models.truck_location import TruckLocation
+from backend.models.assignment import Assignment
+from backend.models.historical_shipment import HistoricalShipment
+from backend.models.prediction import Prediction
+from backend.models.assignment_history import AssignmentHistory
