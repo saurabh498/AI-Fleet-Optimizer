@@ -3,6 +3,7 @@ from backend.models.shipment import Shipment
 from backend.services.backhaul_matching import find_backhaul_matches
 from backend.services.fleet_constraints import validate_fleet_candidate
 from backend.services.ortools_optimizer import optimize_assignments
+from backend.services.route_optimizer import calculate_route_distances
 
 def optimize_fleet(db):
     """
@@ -90,6 +91,18 @@ def optimize_fleet(db):
                 match.get("match_score", 0)
             )
 
+            route_distances = calculate_route_distances(
+                truck.current_latitude,
+                truck.current_longitude,
+                shipment.pickup_latitude,
+                shipment.pickup_longitude,
+                shipment.destination_latitude,
+                shipment.destination_longitude,
+                truck.cost_per_km
+            )
+
+            estimated_distance = route_distances["total_distance_km"]
+
             all_candidates.append({
                 "truck_id": truck.truck_id,
                 "load_id": match["load_id"],
@@ -105,6 +118,7 @@ def optimize_fleet(db):
                     "route_efficiency_score",
                     0
                 ),
+                "estimated_distance": estimated_distance,
                 "estimated_route_cost": match.get(
                     "estimated_route_cost",
                     0

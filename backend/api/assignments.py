@@ -10,6 +10,7 @@ from backend.models.truck import Truck
 from backend.models.truck_location import TruckLocation
 from backend.services.backhaul_matching import find_backhaul_matches
 from backend.models.assignment_history import AssignmentHistory
+from backend.services.reoptimization import reoptimize_fleet
 
 router = APIRouter(
     prefix="/assignments",
@@ -501,9 +502,7 @@ def complete_assignment(
         raise HTTPException(
             status_code=400,
             detail="Assignment must be in transit before completion"
-    )
-
-    
+        )
 
     # -------------------------------------------------
     # 3. Find truck
@@ -566,7 +565,7 @@ def complete_assignment(
     db.add(assignment_history)
 
     # -------------------------------------------------
-    # 9. Commit
+    # 9. Commit completed assignment state
     # -------------------------------------------------
 
     db.commit()
@@ -574,6 +573,16 @@ def complete_assignment(
     db.refresh(assignment)
     db.refresh(truck)
     db.refresh(shipment)
+
+    # -------------------------------------------------
+    # 10. Re-optimize fleet after completion
+    # -------------------------------------------------
+
+    reoptimization = reoptimize_fleet(db)
+
+    # -------------------------------------------------
+    # 11. Return completed state + re-optimization
+    # -------------------------------------------------
 
     return {
         "message": "Assignment completed successfully",
@@ -595,5 +604,7 @@ def complete_assignment(
         "shipment": {
             "load_id": shipment.load_id,
             "status": shipment.status
-        }
+        },
+
+        "reoptimization": reoptimization
     }

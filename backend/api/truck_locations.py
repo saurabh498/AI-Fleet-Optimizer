@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
 from backend.models.truck_location import TruckLocation
+from backend.models.truck import Truck
 from backend.schemas.truck_location import (
     TruckLocationCreate,
     TruckLocationResponse
@@ -20,9 +21,26 @@ def create_location(
     location_data: TruckLocationCreate,
     db: Session = Depends(get_db)
 ):
-    location = TruckLocation(**location_data.model_dump())
+    truck = db.query(Truck).filter(
+        Truck.truck_id == location_data.truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    location = TruckLocation(
+        **location_data.model_dump()
+    )
 
     db.add(location)
+
+    # Synchronize latest GPS position with Truck table
+    truck.current_latitude = location_data.latitude
+    truck.current_longitude = location_data.longitude
+
     db.commit()
     db.refresh(location)
 

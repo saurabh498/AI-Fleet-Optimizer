@@ -24,6 +24,10 @@ from backend.services.fleet_optimizer import optimize_fleet
 
 from backend.services.fleet_assignment_executor import execute_fleet_assignments
 
+from backend.services.reoptimization import reoptimize_fleet
+
+
+
 from backend.services.route_optimizer import (
     calculate_route_distances,
     calculate_route_efficiency
@@ -252,3 +256,7 @@ def fleet_execute(
         db,
         recommendations
     )
+
+@router.get("/fleet-reoptimize")
+def fleet_reoptimize(db: Session = Depends(get_db)):
+    return reoptimize_fleet(db)
