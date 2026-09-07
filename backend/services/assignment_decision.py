@@ -1,4 +1,5 @@
 from backend.services.best_backhaul import select_best_backhaul
+from backend.services.ml_decision_context import build_ml_decision_context
 
 
 def generate_assignment_decision(
@@ -7,7 +8,7 @@ def generate_assignment_decision(
 ):
     """
     Generate an intelligent assignment decision
-    for the best available backhaul shipment.
+    using backhaul optimization and ML predictions.
 
     Possible decisions:
     - ASSIGN_NOW
@@ -23,6 +24,15 @@ def generate_assignment_decision(
     if result is None:
         return None
 
+    # -------------------------------------------------
+    # Build ML decision context
+    # -------------------------------------------------
+
+    ml_context = build_ml_decision_context(
+        truck_id,
+        db
+    )
+
     best_match = result.get("best_match")
 
     # -------------------------------------------------
@@ -33,16 +43,25 @@ def generate_assignment_decision(
 
         return {
             "truck_id": truck_id,
+
             "decision": "WAIT",
-            "action": "Wait for a better backhaul shipment",
+
+            "action": (
+                "Wait for a better backhaul shipment"
+            ),
+
             "reason": (
                 "No suitable backhaul shipment is currently "
-                "available"
+                "available."
             ),
+
             "best_match": None,
+
             "waiting_recommendation": result.get(
                 "waiting_recommendation"
-            )
+            ),
+
+            "ml_context": ml_context
         }
 
     # -------------------------------------------------
@@ -117,6 +136,10 @@ def generate_assignment_decision(
             "score."
         )
 
+    # -------------------------------------------------
+    # Final decision response
+    # -------------------------------------------------
+
     return {
         "truck_id": truck_id,
 
@@ -132,5 +155,7 @@ def generate_assignment_decision(
             "decision_score": decision_score,
             "route_efficiency_score": route_efficiency,
             "estimated_route_profit": estimated_profit
-        }
+        },
+
+        "ml_context": ml_context
     }

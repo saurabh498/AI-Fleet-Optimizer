@@ -13,6 +13,8 @@ from backend.api.shipments import router as shipments_router
 from backend.api.truck_locations import router as locations_router
 from backend.api.backhaul import router as backhaul_router
 from backend.api.assignments import router as assignments_router
+from backend.api import demand_prediction
+from backend.api import waiting_time_prediction
 
 app = FastAPI(
     title="AI Fleet Optimizer",
@@ -27,6 +29,8 @@ app.include_router(shipments_router)
 app.include_router(locations_router)
 app.include_router(backhaul_router)
 app.include_router(assignments_router)
+app.include_router(demand_prediction.router)
+app.include_router(waiting_time_prediction.router)
 
 @app.get("/")
 def root():

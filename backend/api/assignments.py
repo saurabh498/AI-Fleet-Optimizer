@@ -11,6 +11,8 @@ from backend.models.truck_location import TruckLocation
 from backend.services.backhaul_matching import find_backhaul_matches
 from backend.models.assignment_history import AssignmentHistory
 from backend.services.reoptimization import reoptimize_fleet
+from backend.services.fleet_assignment_executor import execute_fleet_assignments
+from backend.services.arrival_detection import detect_arrival
 
 router = APIRouter(
     prefix="/assignments",
@@ -581,30 +583,109 @@ def complete_assignment(
     reoptimization = reoptimize_fleet(db)
 
     # -------------------------------------------------
-    # 11. Return completed state + re-optimization
+    # 11. Automatically execute new recommendations
+    # -------------------------------------------------
+
+    optimization_data = reoptimization.get(
+        "optimization",
+        {}
+    )
+
+    recommendations = optimization_data.get(
+        "assignments",
+        []
+    )
+
+    if recommendations:
+        automatic_execution = execute_fleet_assignments(
+            db,
+            recommendations
+        )
+    else:
+        automatic_execution = {
+            "message": "No new fleet assignments to execute",
+            "total_requested": 0,
+            "total_executed": 0,
+            "total_rejected": 0,
+            "executed_assignments": [],
+            "rejected_assignments": []
+        }
+
+    # -------------------------------------------------
+    # 12. Refresh state after automatic assignment
+    # -------------------------------------------------
+
+    db.refresh(assignment)
+    db.refresh(truck)
+    db.refresh(shipment)
+
+    # -------------------------------------------------
+    # 13. Return completion + reoptimization + execution
     # -------------------------------------------------
 
     return {
         "message": "Assignment completed successfully",
 
         "assignment": {
-            "assignment_id": assignment.assignment_id,
-            "truck_id": assignment.truck_id,
-            "load_id": assignment.load_id,
-            "status": assignment.status
+        "assignment_id": assignment.assignment_id,
+        "truck_id": assignment.truck_id,
+        "load_id": assignment.load_id,
+        "status": assignment.status
         },
 
         "truck": {
-            "truck_id": truck.truck_id,
-            "current_load": truck.current_load,
-            "status": truck.status,
-            "destination": truck.destination
+        "truck_id": truck.truck_id,
+        "current_load": truck.current_load,
+        "status": truck.status,
+        "destination": truck.destination
         },
 
         "shipment": {
-            "load_id": shipment.load_id,
-            "status": shipment.status
+        "load_id": shipment.load_id,
+        "status": shipment.status
         },
 
-        "reoptimization": reoptimization
+        "reoptimization": reoptimization,
+
+        "automatic_execution": automatic_execution
     }
+
+@router.get("/{assignment_id}/arrival")
+def check_assignment_arrival(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    # -------------------------------------------------
+    # 1. Detect arrival
+    # -------------------------------------------------
+
+    arrival_result = detect_arrival(
+        db,
+        assignment_id
+    )
+
+    # -------------------------------------------------
+    # 2. If truck has not arrived
+    # -------------------------------------------------
+
+    if not arrival_result.get("arrived", False):
+        return arrival_result
+
+    # -------------------------------------------------
+    # 3. Automatically complete assignment
+    # -------------------------------------------------
+
+    completion_result = complete_assignment(
+        assignment_id,
+        db
+    )
+
+    # -------------------------------------------------
+    # 4. Return arrival + completion result
+    # -------------------------------------------------
+
+    return {
+        "message": "Truck arrived and assignment completed automatically",
+        "arrival": arrival_result,
+        "completion": completion_result
+    }  

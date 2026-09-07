@@ -21,6 +21,44 @@ def create_location(
     location_data: TruckLocationCreate,
     db: Session = Depends(get_db)
 ):
+    import math
+
+    # -------------------------------------------------
+    # 1. Validate latitude
+    # -------------------------------------------------
+
+    if not math.isfinite(location_data.latitude):
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude must be a finite number"
+        )
+
+    if not -90 <= location_data.latitude <= 90:
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude must be between -90 and 90"
+        )
+
+    # -------------------------------------------------
+    # 2. Validate longitude
+    # -------------------------------------------------
+
+    if not math.isfinite(location_data.longitude):
+        raise HTTPException(
+            status_code=400,
+            detail="Longitude must be a finite number"
+        )
+
+    if not -180 <= location_data.longitude <= 180:
+        raise HTTPException(
+            status_code=400,
+            detail="Longitude must be between -180 and 180"
+        )
+
+    # -------------------------------------------------
+    # 3. Validate truck
+    # -------------------------------------------------
+
     truck = db.query(Truck).filter(
         Truck.truck_id == location_data.truck_id
     ).first()
@@ -30,6 +68,10 @@ def create_location(
             status_code=404,
             detail="Truck not found"
         )
+
+    # -------------------------------------------------
+    # 4. Create GPS location
+    # -------------------------------------------------
 
     location = TruckLocation(
         **location_data.model_dump()
