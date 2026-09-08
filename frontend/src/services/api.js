@@ -17,4 +17,25 @@ export const getShipments = async () => {
   return response.data;
 };
 
+export const getTruckDecision = async (truckId) => {
+  const response = await api.get(
+    `/backhaul/decision/${truckId}`
+  );
+
+  return response.data;
+};
+
+export const getLatestTruckLocation = async (truckId) => {
+  const response = await api.get(
+    `/locations/truck/${truckId}/latest`
+  );
+
+  return response.data;
+};
+
+export const getAssignments = async () => {
+  const response = await api.get("/assignments/");
+  return response.data;
+};
+
 export default api;

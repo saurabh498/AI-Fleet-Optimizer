@@ -26,6 +26,8 @@ from backend.services.fleet_assignment_executor import execute_fleet_assignments
 
 from backend.services.reoptimization import reoptimize_fleet
 
+from backend.services.baseline_vs_ai import compare_baseline_vs_ai
+
 
 
 from backend.services.route_optimizer import (
@@ -260,3 +262,27 @@ def fleet_execute(
 @router.get("/fleet-reoptimize")
 def fleet_reoptimize(db: Session = Depends(get_db)):
     return reoptimize_fleet(db)
+
+@router.get("/baseline-vs-ai/{truck_id}")
+def baseline_vs_ai_comparison(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    result = compare_baseline_vs_ai(
+        truck_id,
+        db
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    if result.get("message") == "Truck not found":
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    return result

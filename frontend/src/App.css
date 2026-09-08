@@ -191,3 +191,614 @@
     gap: 20px;
   }
 }
+
+.shipment-kpis {
+  margin-bottom: 28px;
+}
+
+.shipment-table {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.shipment-header,
+.shipment-row {
+  min-width: 850px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1.2fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: 20px;
+}
+
+.shipment-header {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #344054;
+  border-bottom: 1px solid #e4e7ec;
+}
+
+.shipment-row {
+  border-bottom: 1px solid #eef2f6;
+}
+
+.shipment-row:last-child {
+  border-bottom: none;
+}
+
+.shipment-status {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.shipment-status.available {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.shipment-status.assigned {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.shipment-status.in_transit {
+  background: #fff6ed;
+  color: #c4320a;
+}
+
+.shipment-status.delivered,
+.shipment-status.completed {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.ai-recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(420px, 1fr)
+  );
+  gap: 24px;
+}
+
+.ai-recommendation-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.ai-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.ai-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #667085;
+}
+
+.ai-card-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.decision-badge {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.decision-badge.assign_now {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.decision-badge.review {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.decision-badge.wait {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.decision-badge.reposition {
+  background: #f4f3ff;
+  color: #5925dc;
+}
+
+.decision-badge.return_empty {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.ai-decision {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 12px;
+  background: #f8fafc;
+  margin-bottom: 18px;
+}
+
+.ai-decision-icon {
+  font-size: 32px;
+}
+
+.ai-decision h3 {
+  margin: 0 0 5px;
+  font-size: 18px;
+}
+
+.ai-decision p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.ai-reason {
+  padding: 16px;
+  border-left: 3px solid #98a2b3;
+  background: #f9fafb;
+  margin-bottom: 20px;
+}
+
+.ai-reason strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.ai-reason p {
+  margin: 0;
+  color: #475467;
+  line-height: 1.5;
+}
+
+.subsection-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: #344054;
+}
+
+.best-match,
+.ai-metrics,
+.ml-context {
+  padding-top: 18px;
+  border-top: 1px solid #eaecf0;
+  margin-top: 18px;
+}
+
+.match-grid,
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.match-grid div,
+.metric {
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.match-grid span,
+.metric span {
+  display: block;
+  font-size: 12px;
+  color: #667085;
+  margin-bottom: 5px;
+}
+
+.match-grid strong,
+.metric strong {
+  display: block;
+  font-size: 14px;
+  color: #101828;
+}
+
+.ml-explanation {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.ml-explanation.positive {
+  background: #ecfdf3;
+}
+
+.ml-explanation.negative {
+  background: #fef3f2;
+}
+
+.ml-explanation.neutral {
+  background: #f2f4f7;
+}
+
+.ml-explanation strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.ml-explanation p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475467;
+}
+
+.no-recommendations {
+  padding: 30px;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  color: #667085;
+}
+
+@media (max-width: 700px) {
+  .ai-recommendations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-grid,
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-card-header {
+    flex-direction: column;
+  }
+}
+
+.fleet-map-wrapper {
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #e4e7ec;
+  background: #ffffff;
+}
+
+.fleet-map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-live-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #027a48;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.map-live-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #12b76a;
+}
+
+.truck-popup {
+  min-width: 180px;
+}
+
+.truck-popup strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.truck-popup p {
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+.fleet-status-panel {
+  margin-top: 24px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 16px;
+}
+
+.fleet-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.fleet-status-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.fleet-status-header p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 14px;
+}
+
+.fleet-last-updated {
+  margin: 12px 0 18px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.fleet-status-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.fleet-status-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fleet-status-table th,
+.fleet-status-table td {
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eaecf0;
+  font-size: 13px;
+}
+
+.fleet-status-table th {
+  color: #667085;
+  font-weight: 600;
+  background: #f9fafb;
+}
+
+.fleet-status-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.fleet-status-badge.assigned {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.fleet-status-badge.in_transit {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.fleet-status-badge.waiting {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.fleet-status-badge.available {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.navbar {
+  width: 100%;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-bottom: 1px solid #e4e7ec;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-brand {
+  font-size: 18px;
+  font-weight: 800;
+  color: #101828;
+  white-space: nowrap;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 8px;
+  color: #475467;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background: #f2f4f7;
+  color: #101828;
+}
+
+.nav-link.active {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.nav-link.disabled {
+  color: #98a2b3;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.nav-link.disabled:hover {
+  background: transparent;
+  color: #98a2b3;
+}
+
+.analytics-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.analytics-chart-card {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.analytics-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.analytics-chart-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #101828;
+}
+
+.analytics-chart-header span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #667085;
+}
+
+.bar-chart {
+  height: 260px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 20px 8px 0;
+  border-bottom: 1px solid #d0d5dd;
+  overflow-x: auto;
+}
+
+.bar-column {
+  min-width: 38px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.bar {
+  width: 24px;
+  min-height: 2px;
+  border-radius: 5px 5px 0 0;
+  transition: opacity 0.2s ease;
+}
+
+.bar:hover {
+  opacity: 0.7;
+}
+
+.profit-bar {
+  background: #12b76a;
+}
+
+.distance-bar {
+  background: #175cd3;
+}
+
+.cost-bar {
+  background: #f79009;
+}
+
+.bar-value {
+  font-size: 9px;
+  color: #667085;
+  white-space: nowrap;
+}
+
+.bar-column > span {
+  font-size: 10px;
+  color: #667085;
+  white-space: nowrap;
+}
+
+.recommendation-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 12px 0;
+}
+
+.recommendation-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recommendation-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #344054;
+}
+
+.recommendation-label strong {
+  font-size: 14px;
+  color: #101828;
+}
+
+.recommendation-track {
+  width: 100%;
+  height: 10px;
+  background: #f2f4f7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.recommendation-fill {
+  height: 100%;
+  background: #175cd3;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+@media (max-width: 900px) {
+  .analytics-chart-grid {
+    grid-template-columns: 1fr;
+  }
+}

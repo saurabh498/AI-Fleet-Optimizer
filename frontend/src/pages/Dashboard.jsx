@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
-import { getTrucks, getShipments } from "../services/api";
+import {
+  getTrucks,
+  getShipments,
+  getTruckDecision,
+} from "../services/api";
+
 import KpiCard from "../components/KpiCard";
+import AIRecommendation from "../components/AIRecommendation";
+import FleetMap from "../components/FleetMap";
+import FleetStatus from "../components/FleetStatus";
 
 function Dashboard() {
   const [trucks, setTrucks] = useState([]);
   const [shipments, setShipments] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,8 +26,34 @@ function Dashboard() {
 
         setTrucks(truckData);
         setShipments(shipmentData);
+
+        const decisionResults = await Promise.all(
+          truckData.map(async (truck) => {
+            try {
+              const decision = await getTruckDecision(
+                truck.truck_id
+              );
+
+              return decision;
+            } catch (error) {
+              console.error(
+                `Failed to load decision for Truck #${truck.truck_id}:`,
+                error
+              );
+
+              return null;
+            }
+          })
+        );
+
+        setRecommendations(
+          decisionResults.filter(Boolean)
+        );
       } catch (error) {
-        console.error("Failed to load fleet data:", error);
+        console.error(
+          "Failed to load fleet data:",
+          error
+        );
       } finally {
         setLoading(false);
       }
@@ -26,6 +61,10 @@ function Dashboard() {
 
     loadFleetData();
   }, []);
+
+  // =========================
+  // TRUCK KPIs
+  // =========================
 
   const totalTrucks = trucks.length;
 
@@ -41,6 +80,10 @@ function Dashboard() {
     (truck) => truck.status === "waiting"
   ).length;
 
+  // =========================
+  // SHIPMENT KPIs
+  // =========================
+
   const totalShipments = shipments.length;
 
   const availableShipments = shipments.filter(
@@ -53,12 +96,20 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
+
+      {/* HEADER */}
+
       <header className="dashboard-header">
         <div>
-          <p className="dashboard-label">AI FLEET OPTIMIZER</p>
+          <p className="dashboard-label">
+            AI FLEET OPTIMIZER
+          </p>
+
           <h1>Fleet Dashboard</h1>
+
           <p className="dashboard-subtitle">
-            AI-based fleet monitoring and backhaul decision support
+            AI-based fleet monitoring and backhaul
+            decision support
           </p>
         </div>
 
@@ -68,11 +119,19 @@ function Dashboard() {
         </div>
       </header>
 
+      {/* LOADING */}
+
       {loading ? (
-        <div className="loading">Loading fleet data...</div>
+        <div className="loading">
+          Loading fleet data...
+        </div>
       ) : (
         <>
+
+          {/* TRUCK KPI SECTION */}
+
           <section className="kpi-grid">
+
             <KpiCard
               title="Total Trucks"
               value={totalTrucks}
@@ -100,71 +159,268 @@ function Dashboard() {
               icon="⏳"
               description="Waiting for loads"
             />
+
           </section>
 
+          {/* SHIPMENT OVERVIEW */}
+
           <section className="dashboard-section">
+
             <div className="section-header">
+
               <div>
-                <section className="dashboard-section">
-                  <div className="section-header">
-                    <div>
-                      <h2>Shipment Overview</h2>
-                      <p>Current shipment and backhaul load status</p>
-                    </div>
-                  </div>
+                <h2>Shipment Overview</h2>
 
-                  <div className="kpi-grid shipment-kpis">
-                    <KpiCard
-                      title="Total Shipments"
-                      value={totalShipments}
-                      icon="📦"
-                      description="All shipments"
-                    />
-
-                    <KpiCard
-                      title="Available Loads"
-                      value={availableShipments}
-                      icon="🟢"
-                      description="Ready for assignment"
-                    />
-
-                    <KpiCard
-                      title="Assigned Loads"
-                      value={assignedShipments}
-                      icon="📋"
-                      description="Currently assigned"
-                    />
-                  </div>
-                </section>
-                <h2>Fleet Overview</h2>
-                <p>Current status of registered trucks</p>
+                <p>
+                  Current shipment and backhaul
+                  load status
+                </p>
               </div>
+
             </div>
 
+            {/* Shipment KPIs */}
+
+            <div className="kpi-grid shipment-kpis">
+
+              <KpiCard
+                title="Total Shipments"
+                value={totalShipments}
+                icon="📦"
+                description="All shipments"
+              />
+
+              <KpiCard
+                title="Available Loads"
+                value={availableShipments}
+                icon="🟢"
+                description="Ready for assignment"
+              />
+
+              <KpiCard
+                title="Assigned Loads"
+                value={assignedShipments}
+                icon="📋"
+                description="Currently assigned"
+              />
+
+            </div>
+
+            {/* Shipment Table */}
+
+            <div className="shipment-table">
+
+              <div className="table-header shipment-header">
+                <span>Load</span>
+                <span>Pickup</span>
+                <span>Destination</span>
+                <span>Weight</span>
+                <span>Revenue</span>
+                <span>Status</span>
+              </div>
+
+              {shipments.map((shipment) => (
+
+                <div
+                  className="table-row shipment-row"
+                  key={shipment.load_id}
+                >
+
+                  <span>
+                    Load #{shipment.load_id}
+                  </span>
+
+                  <span>
+                    {shipment.pickup_city || "Unknown"}
+                  </span>
+
+                  <span>
+                    {shipment.destination_city ||
+                      "Unknown"}
+                  </span>
+
+                  <span>
+                    {shipment.weight || 0} kg
+                  </span>
+
+                  <span>
+                    ₹
+                    {Number(
+                      shipment.revenue || 0
+                    ).toLocaleString("en-IN")}
+                  </span>
+
+                  <span
+                    className={"shipment-status " + shipment.status}
+                  >
+                    {shipment.status}
+                  </span>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </section>
+
+          {/* AI RECOMMENDATIONS */}
+
+          <section className="dashboard-section">
+
+            <div className="section-header">
+
+              <div>
+                <h2>AI Recommendations</h2>
+
+                <p>
+                  AI-powered backhaul assignment
+                  and waiting decisions
+                </p>
+              </div>
+
+            </div>
+
+            <div className="ai-recommendations-grid">
+
+              {recommendations.length === 0 ? (
+
+                <div className="no-recommendations">
+                  No AI recommendations available.
+                </div>
+
+              ) : (
+
+                recommendations.map(
+                  (recommendation) => (
+
+                    <AIRecommendation
+                      key={recommendation.truck_id}
+                      recommendation={recommendation}
+                    />
+
+                  )
+                )
+
+              )}
+
+            </div>
+
+          </section>
+
+          {/* LIVE FLEET MAP */}
+
+          <section className="dashboard-section">
+
+            <div className="section-header">
+
+              <div>
+
+                <h2>Live Fleet Map</h2>
+
+                <p>
+                  Real-time simulated GPS location
+                  of fleet vehicles
+                </p>
+
+              </div>
+
+              <div className="map-live-status">
+
+                <span className="status-dot"></span>
+
+                GPS Simulation Active
+
+              </div>
+
+            </div>
+
+            <FleetMap trucks={trucks} />
+
+          </section>
+
+          {/* LIVE FLEET STATUS */}
+
+          <section className="dashboard-section">
+
+            <FleetStatus trucks={trucks} />
+
+          </section>
+
+          {/* FLEET OVERVIEW */}
+
+          <section className="dashboard-section">
+
+            <div className="section-header">
+
+              <div>
+
+                <h2>Fleet Overview</h2>
+
+                <p>
+                  Current status of registered
+                  trucks
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* Truck Table */}
+
             <div className="truck-table">
+
               <div className="table-header">
+
                 <span>Truck</span>
                 <span>Type</span>
                 <span>Capacity</span>
                 <span>Location</span>
                 <span>Status</span>
+
               </div>
 
               {trucks.map((truck) => (
-                <div className="table-row" key={truck.truck_id}>
-                  <span>Truck #{truck.truck_id}</span>
-                  <span>{truck.truck_type}</span>
-                  <span>{truck.capacity} kg</span>
-                  <span>{truck.current_city || "Unknown"}</span>
-                  <span className={`truck-status ${truck.status}`}>
+
+                <div
+                  className="table-row"
+                  key={truck.truck_id}
+                >
+
+                  <span>
+                    Truck #{truck.truck_id}
+                  </span>
+
+                  <span>
+                    {truck.truck_type}
+                  </span>
+
+                  <span>
+                    {truck.capacity} kg
+                  </span>
+
+                  <span>
+                    {truck.current_city ||
+                      "Unknown"}
+                  </span>
+
+                  <span
+                    className={"truck-status " + truck.status}
+                  >
                     {truck.status}
                   </span>
+
                 </div>
+
               ))}
+
             </div>
+
           </section>
+
         </>
       )}
+
     </div>
   );
 }
