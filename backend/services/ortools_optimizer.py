@@ -80,11 +80,17 @@ def optimize_assignments(candidates):
     for index, candidate in enumerate(candidates):
 
         decision_score = float(
+    candidate.get(
+        "ml_adjusted_decision_score",
+        candidate.get(
+            "decision_score",
             candidate.get(
-                "decision_score",
-                candidate.get("match_score", 0)
+                "match_score",
+                0
             )
         )
+    )
+)
 
         route_efficiency = float(
             candidate.get(
