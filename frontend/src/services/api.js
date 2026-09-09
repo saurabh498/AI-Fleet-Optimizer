@@ -38,4 +38,13 @@ export const getAssignments = async () => {
   return response.data;
 };
 
+
+export const getBaselineVsAI = async (truckId) => {
+  const response = await api.get(
+    `/backhaul/baseline-vs-ai/${truckId}`
+  );
+
+  return response.data;
+};
+
 export default api;
