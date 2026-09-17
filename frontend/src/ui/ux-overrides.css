@@ -1,0 +1,45 @@
+/* Advanced UX polish layer — no application logic changes. */
+
+.ai-recommendation-card { position: relative; overflow: hidden; }
+.ai-recommendation-card::before { content:""; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg,#2563eb,#7a5af8); opacity:.9; }
+.ai-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.decision-badge { font-size:11px !important; font-weight:800 !important; text-transform:uppercase; letter-spacing:.05em; padding:7px 10px !important; border-radius:999px !important; }
+.decision-badge.assign_now { background:#ecfdf3 !important; color:#067647 !important; border-color:#abefc6 !important; }
+.decision-badge.review { background:#eff8ff !important; color:#175cd3 !important; border-color:#b2ddff !important; }
+.decision-badge.wait { background:#fffaeb !important; color:#b54708 !important; border-color:#fedf89 !important; }
+.decision-badge.reposition { background:#f4f3ff !important; color:#5925dc !important; border-color:#d9d6fe !important; }
+.decision-badge.return_empty { background:#fef3f2 !important; color:#b42318 !important; border-color:#fecdca !important; }
+.ai-decision { display:flex; align-items:center; gap:14px; }
+.ai-decision-icon { width:48px; height:48px; flex:0 0 48px; display:grid; place-items:center; border-radius:14px; background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1px solid #e0e7ff; font-size:22px; }
+.best-match, .ai-metrics, .ml-context { margin-top:20px; }
+.subsection-title { font-size:11px !important; font-weight:800 !important; text-transform:uppercase; letter-spacing:.08em; color:#667085 !important; margin-bottom:10px; }
+.match-grid, .metrics-grid { gap:10px !important; }
+.match-grid div, .metric { min-width:0; padding:12px !important; border:1px solid #edf1f6 !important; background:#f8fafc !important; }
+.match-grid span, .metric span { color:#667085 !important; font-size:10px !important; text-transform:uppercase; letter-spacing:.05em; }
+.match-grid strong, .metric strong { color:#101828 !important; font-size:13px !important; }
+.ml-context { padding-top:17px; border-top:1px solid #eef2f6; }
+.ml-explanation { margin-top:18px !important; border-radius:13px !important; padding:14px !important; }
+.ml-explanation.positive { background:#f0fdf4 !important; border:1px solid #bbf7d0 !important; color:#166534; }
+.ml-explanation.negative { background:#fef2f2 !important; border:1px solid #fecaca !important; color:#991b1b; }
+.ml-explanation.neutral { background:#f8fafc !important; border:1px solid #e2e8f0 !important; color:#475569; }
+
+/* Phase-9 experiment controls */
+.phase9-section { background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%) !important; }
+.phase9-label { color:#7a5af8 !important; font-size:10px !important; font-weight:850 !important; letter-spacing:.13em; }
+.experiment-badge { white-space:nowrap; padding:8px 11px; border-radius:999px; background:#f4f3ff; color:#5925dc; border:1px solid #d9d6fe; font-size:11px; font-weight:800; }
+.comparison-controls { display:flex; align-items:end; justify-content:space-between; gap:18px; padding:16px; border:1px solid #e8edf4; border-radius:15px; background:#f8fafc; }
+.comparison-label { display:block; margin-bottom:7px; color:#475467; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.truck-selector { min-width:250px; min-height:42px; padding:0 12px; }
+.experiment-status { display:flex; align-items:center; gap:8px; color:#067647; font-size:12px; font-weight:750; }
+.experiment-check { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:#ecfdf3; border:1px solid #abefc6; }
+.comparison-grid { gap:14px !important; }
+.comparison-card { border-radius:16px !important; border:1px solid #e7ecf3 !important; box-shadow:0 8px 24px rgba(16,24,40,.04) !important; }
+.comparison-card.highlight { border-color:#d8d6fe !important; background:linear-gradient(180deg,#fff,#faf9ff) !important; }
+.comparison-values strong { letter-spacing:-.025em; }
+.comparison-difference { border-radius:9px !important; font-size:11px !important; font-weight:750; }
+
+@media (max-width:760px) {
+  .comparison-controls { align-items:stretch; flex-direction:column; }
+  .truck-selector { width:100%; min-width:0; }
+  .ai-card-header { flex-direction:column; }
+}
