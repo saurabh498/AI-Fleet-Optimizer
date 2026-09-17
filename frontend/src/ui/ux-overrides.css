@@ -23,7 +23,6 @@
 .ml-explanation.negative { background:#fef2f2 !important; border:1px solid #fecaca !important; color:#991b1b; }
 .ml-explanation.neutral { background:#f8fafc !important; border:1px solid #e2e8f0 !important; color:#475569; }
 
-/* Phase-9 experiment controls */
 .phase9-section { background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%) !important; }
 .phase9-label { color:#7a5af8 !important; font-size:10px !important; font-weight:850 !important; letter-spacing:.13em; }
 .experiment-badge { white-space:nowrap; padding:8px 11px; border-radius:999px; background:#f4f3ff; color:#5925dc; border:1px solid #d9d6fe; font-size:11px; font-weight:800; }
@@ -38,8 +37,21 @@
 .comparison-values strong { letter-spacing:-.025em; }
 .comparison-difference { border-radius:9px !important; font-size:11px !important; font-weight:750; }
 
+/* Fleet + shipment management screens */
+.truck-table, .shipment-table { border:1px solid #e7ecf3; border-radius:16px; overflow:auto; background:#fff; }
+.truck-table .table-header, .shipment-table .table-header { position:sticky; top:0; z-index:1; }
+.truck-table .table-row, .shipment-table .table-row { min-height:58px; border-bottom:1px solid #eef2f6; }
+.truck-table .table-row:last-child, .shipment-table .table-row:last-child { border-bottom:0; }
+.truck-table strong, .shipment-table strong { font-weight:800; }
+.success-message { border-radius:12px; padding:12px 14px; margin-bottom:16px; background:#ecfdf3; color:#067647; border:1px solid #abefc6; font-weight:750; }
+.modal-card { max-height:90vh; overflow:auto; }
+.modal-close { border-radius:10px; transition:background .15s ease, transform .15s ease; }
+.modal-close:hover { background:#f2f4f7; transform:rotate(3deg); }
+.modal-actions { position:sticky; bottom:0; background:rgba(255,255,255,.96); backdrop-filter:blur(8px); border-top:1px solid #eef2f6; padding-top:16px; }
+
 @media (max-width:760px) {
   .comparison-controls { align-items:stretch; flex-direction:column; }
   .truck-selector { width:100%; min-width:0; }
   .ai-card-header { flex-direction:column; }
+  .truck-table, .shipment-table { border-radius:12px; }
 }
