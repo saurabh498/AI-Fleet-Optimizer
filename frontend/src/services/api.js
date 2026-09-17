@@ -12,8 +12,18 @@ export const getTrucks = async () => {
   return response.data;
 };
 
+export const createTruck = async (truckData) => {
+  const response = await api.post("/trucks/", truckData);
+  return response.data;
+};
+
 export const getShipments = async () => {
   const response = await api.get("/shipments/");
+  return response.data;
+};
+
+export const createShipment = async (shipmentData) => {
+  const response = await api.post("/shipments/", shipmentData);
   return response.data;
 };
 

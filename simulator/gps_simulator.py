@@ -6,7 +6,7 @@ import requests
 
 BASE_URL = "http://127.0.0.1:8000"
 
-TRUCK_ID = 2
+TRUCK_ID = 1
 
 STEPS = 10
 INTERVAL_SECONDS = 2

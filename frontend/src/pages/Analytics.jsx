@@ -156,8 +156,7 @@ function Analytics() {
 
     const averageWaitingTime =
         assignments.length > 0
-            ? totalWaitingTime /
-            assignments.length
+            ? totalWaitingTime / assignments.length
             : 0;
 
     const averageMatchScore =
@@ -240,14 +239,70 @@ function Analytics() {
     // BASELINE VS AI DATA
     // ==========================================
 
-    const baseline =
-        comparison?.baseline;
+    const baseline = comparison?.baseline;
+    const ai = comparison?.ai;
+    const comparisonData = comparison?.comparison;
 
-    const ai =
-        comparison?.ai;
+    // ==========================================
+    // SAME RESULT DETECTION
+    // ==========================================
 
-    const comparisonData =
-        comparison?.comparison;
+    const baselineProfit = Number(
+        baseline?.estimated_profit || 0
+    );
+
+    const aiProfit = Number(
+        ai?.estimated_profit || 0
+    );
+
+    const baselineDistance = Number(
+        baseline?.total_distance_km || 0
+    );
+
+    const aiDistance = Number(
+        ai?.total_distance_km || 0
+    );
+
+    const baselineCost = Number(
+        baseline?.estimated_cost || 0
+    );
+
+    const aiCost = Number(
+        ai?.estimated_cost || 0
+    );
+
+    const baselineUtilization = Number(
+        baseline?.capacity_utilization_percent || 0
+    );
+
+    const aiUtilization = Number(
+        ai?.capacity_utilization_percent || 0
+    );
+
+    const sameLoad =
+        baseline?.load_id === ai?.load_id;
+
+    const sameMetrics =
+        Math.abs(
+            baselineProfit - aiProfit
+        ) < 0.01 &&
+        Math.abs(
+            baselineDistance - aiDistance
+        ) < 0.01 &&
+        Math.abs(
+            baselineCost - aiCost
+        ) < 0.01 &&
+        Math.abs(
+            baselineUtilization -
+            aiUtilization
+        ) < 0.01;
+
+    const isSameResult =
+        sameLoad && sameMetrics;
+
+    // ==========================================
+    // FORMATTING HELPERS
+    // ==========================================
 
     const formatCurrency = (value) => {
         return `₹${Number(
@@ -257,7 +312,10 @@ function Analytics() {
         })}`;
     };
 
-    const formatNumber = (value, digits = 2) => {
+    const formatNumber = (
+        value,
+        digits = 2
+    ) => {
         return Number(
             value || 0
         ).toFixed(digits);
@@ -405,6 +463,7 @@ function Analytics() {
                         ) : comparisonError ? (
 
                             <div className="comparison-empty">
+
                                 <div className="comparison-empty-icon">
                                     📊
                                 </div>
@@ -416,13 +475,16 @@ function Analytics() {
                                 <p>
                                     {comparisonError}
                                 </p>
+
                             </div>
 
                         ) : comparison ? (
 
                             <>
 
-                                {/* EXPERIMENT VALIDITY */}
+                                {/* ==========================================
+                                    EXPERIMENT VALIDITY
+                                ========================================== */}
 
                                 <div className="experiment-validity-grid">
 
@@ -482,13 +544,16 @@ function Analytics() {
 
                                 </div>
 
-                                {/* COMPARISON CARDS */}
+                                {/* ==========================================
+                                    COMPARISON DATA
+                                ========================================== */}
 
                                 {baseline && ai ? (
 
                                     <>
 
                                         <div className="comparison-title">
+
                                             <h3>
                                                 Strategy Performance
                                             </h3>
@@ -498,6 +563,7 @@ function Analytics() {
                                                 metrics for the selected
                                                 truck
                                             </p>
+
                                         </div>
 
                                         <div className="comparison-grid">
@@ -507,6 +573,7 @@ function Analytics() {
                                             <div className="comparison-card">
 
                                                 <div className="comparison-card-header">
+
                                                     <span>
                                                         💰 Revenue
                                                     </span>
@@ -514,6 +581,7 @@ function Analytics() {
                                                     <span className="comparison-unit">
                                                         Estimated
                                                     </span>
+
                                                 </div>
 
                                                 <div className="comparison-values">
@@ -531,6 +599,7 @@ function Analytics() {
                                                     </div>
 
                                                     <div className="ai-value">
+
                                                         <span>
                                                             AI
                                                         </span>
@@ -540,17 +609,19 @@ function Analytics() {
                                                                 ai.revenue
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                 </div>
 
                                                 <div className="comparison-difference positive">
-                                                    AI vs Baseline:
-                                                    {" "}
+
+                                                    AI vs Baseline:{" "}
+
                                                     {formatCurrency(
-                                                        comparisonData
-                                                            ?.revenue_difference
+                                                        comparisonData?.revenue_difference
                                                     )}
+
                                                 </div>
 
                                             </div>
@@ -560,6 +631,7 @@ function Analytics() {
                                             <div className="comparison-card">
 
                                                 <div className="comparison-card-header">
+
                                                     <span>
                                                         💸 Operating Cost
                                                     </span>
@@ -567,6 +639,7 @@ function Analytics() {
                                                     <span className="comparison-unit">
                                                         Estimated
                                                     </span>
+
                                                 </div>
 
                                                 <div className="comparison-values">
@@ -584,6 +657,7 @@ function Analytics() {
                                                     </div>
 
                                                     <div className="ai-value">
+
                                                         <span>
                                                             AI
                                                         </span>
@@ -593,17 +667,19 @@ function Analytics() {
                                                                 ai.estimated_cost
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                 </div>
 
                                                 <div className="comparison-difference neutral">
-                                                    Cost difference:
-                                                    {" "}
+
+                                                    Cost difference:{" "}
+
                                                     {formatCurrency(
-                                                        comparisonData
-                                                            ?.cost_difference
+                                                        comparisonData?.cost_difference
                                                     )}
+
                                                 </div>
 
                                             </div>
@@ -613,6 +689,7 @@ function Analytics() {
                                             <div className="comparison-card highlight">
 
                                                 <div className="comparison-card-header">
+
                                                     <span>
                                                         📈 Estimated Profit
                                                     </span>
@@ -620,6 +697,7 @@ function Analytics() {
                                                     <span className="comparison-unit">
                                                         Estimated
                                                     </span>
+
                                                 </div>
 
                                                 <div className="comparison-values">
@@ -637,6 +715,7 @@ function Analytics() {
                                                     </div>
 
                                                     <div className="ai-value">
+
                                                         <span>
                                                             AI
                                                         </span>
@@ -646,17 +725,19 @@ function Analytics() {
                                                                 ai.estimated_profit
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                 </div>
 
                                                 <div className="comparison-difference positive">
-                                                    AI profit advantage:
-                                                    {" "}
+
+                                                    AI profit advantage:{" "}
+
                                                     {formatCurrency(
-                                                        comparisonData
-                                                            ?.profit_difference
+                                                        comparisonData?.profit_difference
                                                     )}
+
                                                 </div>
 
                                             </div>
@@ -666,6 +747,7 @@ function Analytics() {
                                             <div className="comparison-card">
 
                                                 <div className="comparison-card-header">
+
                                                     <span>
                                                         🛣️ Total Distance
                                                     </span>
@@ -673,6 +755,7 @@ function Analytics() {
                                                     <span className="comparison-unit">
                                                         KM
                                                     </span>
+
                                                 </div>
 
                                                 <div className="comparison-values">
@@ -685,12 +768,13 @@ function Analytics() {
                                                         <strong>
                                                             {formatNumber(
                                                                 baseline.total_distance_km
-                                                            )}
-                                                            {" "}km
+                                                            )}{" "}
+                                                            km
                                                         </strong>
                                                     </div>
 
                                                     <div className="ai-value">
+
                                                         <span>
                                                             AI
                                                         </span>
@@ -698,21 +782,23 @@ function Analytics() {
                                                         <strong>
                                                             {formatNumber(
                                                                 ai.total_distance_km
-                                                            )}
-                                                            {" "}km
+                                                            )}{" "}
+                                                            km
                                                         </strong>
+
                                                     </div>
 
                                                 </div>
 
                                                 <div className="comparison-difference neutral">
-                                                    Difference:
-                                                    {" "}
+
+                                                    Difference:{" "}
+
                                                     {formatNumber(
-                                                        comparisonData
-                                                            ?.distance_difference_km
-                                                    )}
-                                                    {" "}km
+                                                        comparisonData?.distance_difference_km
+                                                    )}{" "}
+                                                    km
+
                                                 </div>
 
                                             </div>
@@ -722,6 +808,7 @@ function Analytics() {
                                             <div className="comparison-card">
 
                                                 <div className="comparison-card-header">
+
                                                     <span>
                                                         📦 Capacity Utilization
                                                     </span>
@@ -729,6 +816,7 @@ function Analytics() {
                                                     <span className="comparison-unit">
                                                         %
                                                     </span>
+
                                                 </div>
 
                                                 <div className="comparison-values">
@@ -747,6 +835,7 @@ function Analytics() {
                                                     </div>
 
                                                     <div className="ai-value">
+
                                                         <span>
                                                             AI
                                                         </span>
@@ -757,25 +846,29 @@ function Analytics() {
                                                             )}
                                                             %
                                                         </strong>
+
                                                     </div>
 
                                                 </div>
 
                                                 <div className="comparison-difference positive">
-                                                    Utilization difference:
-                                                    {" "}
+
+                                                    Utilization difference:{" "}
+
                                                     {formatNumber(
-                                                        comparisonData
-                                                            ?.utilization_difference_percent
-                                                    )}
-                                                    {" "}pp
+                                                        comparisonData?.utilization_difference_percent
+                                                    )}{" "}
+                                                    pp
+
                                                 </div>
 
                                             </div>
 
                                         </div>
 
-                                        {/* SELECTED LOADS */}
+                                        {/* ==========================================
+                                            SELECTED LOADS
+                                        ========================================== */}
 
                                         <div className="selected-loads">
 
@@ -871,17 +964,22 @@ function Analytics() {
 
                                         </div>
 
-                                        {/* WINNER */}
+                                        {/* ==========================================
+                                            EXPERIMENT RESULT
+                                        ========================================== */}
 
                                         <div className="comparison-result">
 
                                             <div className="result-icon">
-                                                {comparisonData?.winner === "AI"
-                                                    ? "🏆"
-                                                    : comparisonData?.winner ===
-                                                        "BASELINE"
-                                                        ? "📌"
-                                                        : "⚖️"}
+
+                                                {isSameResult
+                                                    ? "🤝"
+                                                    : comparisonData?.winner === "AI"
+                                                        ? "🏆"
+                                                        : comparisonData?.winner === "BASELINE"
+                                                            ? "📌"
+                                                            : "⚖️"}
+
                                             </div>
 
                                             <div>
@@ -891,30 +989,39 @@ function Analytics() {
                                                 </span>
 
                                                 <h3>
-                                                    {comparisonData?.winner ===
-                                                        "AI"
-                                                        ? "AI Strategy Wins"
-                                                        : comparisonData?.winner ===
-                                                            "BASELINE"
-                                                            ? "Baseline Strategy Wins"
-                                                            : "Trade-off Result"}
+
+                                                    {isSameResult
+                                                        ? "Same Result"
+                                                        : comparisonData?.winner === "AI"
+                                                            ? "AI Strategy Wins"
+                                                            : comparisonData?.winner === "BASELINE"
+                                                                ? "Baseline Strategy Wins"
+                                                                : "Trade-off Result"}
+
                                                 </h3>
 
                                                 <p>
-                                                    {comparisonData?.winner ===
-                                                        "AI"
-                                                        ? "The AI strategy achieved higher estimated profit without increasing total route distance in this controlled scenario."
-                                                        : comparisonData?.winner ===
-                                                            "BASELINE"
-                                                            ? "The baseline strategy performed better on the evaluated profit and distance criteria in this controlled scenario."
-                                                            : "The two strategies present a trade-off across profit and route distance in this controlled scenario."}
+
+                                                    {isSameResult
+                                                        ? "Both strategies selected the same shipment and produced the same estimated operational metrics in this controlled scenario."
+                                                        : comparisonData?.winner === "AI"
+                                                            ? "The AI strategy achieved higher estimated profit without increasing total route distance in this controlled scenario."
+                                                            : comparisonData?.winner === "BASELINE"
+                                                                ? "The baseline strategy performed better on the evaluated profit and distance criteria in this controlled scenario."
+                                                                : "The two strategies present a trade-off across profit and route distance in this controlled scenario."}
+
                                                 </p>
 
                                             </div>
 
                                         </div>
 
+                                        {/* ==========================================
+                                            EVALUATION NOTE
+                                        ========================================== */}
+
                                         <div className="experiment-note">
+
                                             <strong>
                                                 ⚠️ Evaluation Note
                                             </strong>
@@ -928,6 +1035,7 @@ function Analytics() {
                                                 percentage for the entire
                                                 fleet.
                                             </span>
+
                                         </div>
 
                                     </>
@@ -988,11 +1096,13 @@ function Analytics() {
                     <section className="kpi-grid">
 
                         <div className="kpi-card">
+
                             <div className="kpi-icon">
                                 📋
                             </div>
 
                             <div className="kpi-content">
+
                                 <p className="kpi-title">
                                     Total Assignments
                                 </p>
@@ -1004,15 +1114,19 @@ function Analytics() {
                                 <p className="kpi-description">
                                     Recorded truck-load assignments
                                 </p>
+
                             </div>
+
                         </div>
 
                         <div className="kpi-card">
+
                             <div className="kpi-icon">
                                 ✅
                             </div>
 
                             <div className="kpi-content">
+
                                 <p className="kpi-title">
                                     Completed
                                 </p>
@@ -1024,15 +1138,19 @@ function Analytics() {
                                 <p className="kpi-description">
                                     Successfully completed assignments
                                 </p>
+
                             </div>
+
                         </div>
 
                         <div className="kpi-card">
+
                             <div className="kpi-icon">
                                 🛣️
                             </div>
 
                             <div className="kpi-content">
+
                                 <p className="kpi-title">
                                     Total Distance
                                 </p>
@@ -1044,15 +1162,19 @@ function Analytics() {
                                 <p className="kpi-description">
                                     Estimated assignment distance
                                 </p>
+
                             </div>
+
                         </div>
 
                         <div className="kpi-card">
+
                             <div className="kpi-icon">
                                 💰
                             </div>
 
                             <div className="kpi-content">
+
                                 <p className="kpi-title">
                                     Total Profit
                                 </p>
@@ -1070,7 +1192,9 @@ function Analytics() {
                                 <p className="kpi-description">
                                     Estimated assignment profit
                                 </p>
+
                             </div>
+
                         </div>
 
                     </section>
@@ -1085,6 +1209,7 @@ function Analytics() {
                         <div className="section-header">
 
                             <div>
+
                                 <h2>
                                     Operational Performance
                                 </h2>
@@ -1092,6 +1217,7 @@ function Analytics() {
                                 <p>
                                     Key logistics and optimization metrics
                                 </p>
+
                             </div>
 
                         </div>
@@ -1099,11 +1225,13 @@ function Analytics() {
                         <div className="kpi-grid">
 
                             <div className="kpi-card">
+
                                 <div className="kpi-icon">
                                     💸
                                 </div>
 
                                 <div className="kpi-content">
+
                                     <p className="kpi-title">
                                         Operating Cost
                                     </p>
@@ -1121,15 +1249,19 @@ function Analytics() {
                                     <p className="kpi-description">
                                         Estimated fleet operating cost
                                     </p>
+
                                 </div>
+
                             </div>
 
                             <div className="kpi-card">
+
                                 <div className="kpi-icon">
                                     ⏱️
                                 </div>
 
                                 <div className="kpi-content">
+
                                     <p className="kpi-title">
                                         Avg Waiting
                                     </p>
@@ -1141,15 +1273,19 @@ function Analytics() {
                                     <p className="kpi-description">
                                         Average assignment waiting time
                                     </p>
+
                                 </div>
+
                             </div>
 
                             <div className="kpi-card">
+
                                 <div className="kpi-icon">
                                     🎯
                                 </div>
 
                                 <div className="kpi-content">
+
                                     <p className="kpi-title">
                                         Avg Match Score
                                     </p>
@@ -1161,15 +1297,19 @@ function Analytics() {
                                     <p className="kpi-description">
                                         Average AI assignment score
                                     </p>
+
                                 </div>
+
                             </div>
 
                             <div className="kpi-card">
+
                                 <div className="kpi-icon">
                                     🔄
                                 </div>
 
                                 <div className="kpi-content">
+
                                     <p className="kpi-title">
                                         Backhaul Success
                                     </p>
@@ -1181,7 +1321,9 @@ function Analytics() {
                                     <p className="kpi-description">
                                         Completed assignments with movement
                                     </p>
+
                                 </div>
+
                             </div>
 
                         </div>
@@ -1198,6 +1340,7 @@ function Analytics() {
                         <div className="section-header">
 
                             <div>
+
                                 <h2>
                                     Visual Analytics
                                 </h2>
@@ -1206,6 +1349,7 @@ function Analytics() {
                                     Assignment, distance, cost and
                                     profit performance
                                 </p>
+
                             </div>
 
                         </div>
@@ -1217,11 +1361,15 @@ function Analytics() {
                             <div className="analytics-chart-card">
 
                                 <div className="analytics-chart-header">
+
                                     <h3>
                                         Assignment Profit
                                     </h3>
 
-                                    <span>₹</span>
+                                    <span>
+                                        ₹
+                                    </span>
+
                                 </div>
 
                                 <div className="bar-chart">
@@ -1283,11 +1431,15 @@ function Analytics() {
                             <div className="analytics-chart-card">
 
                                 <div className="analytics-chart-header">
+
                                     <h3>
                                         Assignment Distance
                                     </h3>
 
-                                    <span>KM</span>
+                                    <span>
+                                        KM
+                                    </span>
+
                                 </div>
 
                                 <div className="bar-chart">
@@ -1347,11 +1499,15 @@ function Analytics() {
                             <div className="analytics-chart-card">
 
                                 <div className="analytics-chart-header">
+
                                     <h3>
                                         Operating Cost
                                     </h3>
 
-                                    <span>₹</span>
+                                    <span>
+                                        ₹
+                                    </span>
+
                                 </div>
 
                                 <div className="bar-chart">
@@ -1413,11 +1569,15 @@ function Analytics() {
                             <div className="analytics-chart-card">
 
                                 <div className="analytics-chart-header">
+
                                     <h3>
                                         AI Recommendation Distribution
                                     </h3>
 
-                                    <span>Count</span>
+                                    <span>
+                                        Count
+                                    </span>
+
                                 </div>
 
                                 <div className="recommendation-bars">
@@ -1425,6 +1585,7 @@ function Analytics() {
                                     <div className="recommendation-row">
 
                                         <div className="recommendation-label">
+
                                             <span>
                                                 Highly Recommended
                                             </span>
@@ -1432,6 +1593,7 @@ function Analytics() {
                                             <strong>
                                                 {highlyRecommended}
                                             </strong>
+
                                         </div>
 
                                         <div className="recommendation-track">
@@ -1440,10 +1602,11 @@ function Analytics() {
                                                 className="recommendation-fill"
                                                 style={{
                                                     width: `${assignments.length > 0
-                                                            ? (highlyRecommended /
-                                                                assignments.length) *
-                                                            100
-                                                            : 0
+                                                        ? (
+                                                            highlyRecommended /
+                                                            assignments.length
+                                                        ) * 100
+                                                        : 0
                                                         }%`,
                                                 }}
                                             ></div>
@@ -1452,10 +1615,10 @@ function Analytics() {
 
                                     </div>
 
-
                                     <div className="recommendation-row">
 
                                         <div className="recommendation-label">
+
                                             <span>
                                                 Recommended
                                             </span>
@@ -1463,6 +1626,7 @@ function Analytics() {
                                             <strong>
                                                 {recommended}
                                             </strong>
+
                                         </div>
 
                                         <div className="recommendation-track">
@@ -1471,10 +1635,11 @@ function Analytics() {
                                                 className="recommendation-fill"
                                                 style={{
                                                     width: `${assignments.length > 0
-                                                            ? (recommended /
-                                                                assignments.length) *
-                                                            100
-                                                            : 0
+                                                        ? (
+                                                            recommended /
+                                                            assignments.length
+                                                        ) * 100
+                                                        : 0
                                                         }%`,
                                                 }}
                                             ></div>
@@ -1483,10 +1648,10 @@ function Analytics() {
 
                                     </div>
 
-
                                     <div className="recommendation-row">
 
                                         <div className="recommendation-label">
+
                                             <span>
                                                 Moderately Recommended
                                             </span>
@@ -1494,6 +1659,7 @@ function Analytics() {
                                             <strong>
                                                 {moderatelyRecommended}
                                             </strong>
+
                                         </div>
 
                                         <div className="recommendation-track">
@@ -1502,10 +1668,11 @@ function Analytics() {
                                                 className="recommendation-fill"
                                                 style={{
                                                     width: `${assignments.length > 0
-                                                            ? (moderatelyRecommended /
-                                                                assignments.length) *
-                                                            100
-                                                            : 0
+                                                        ? (
+                                                            moderatelyRecommended /
+                                                            assignments.length
+                                                        ) * 100
+                                                        : 0
                                                         }%`,
                                                 }}
                                             ></div>
@@ -1532,6 +1699,7 @@ function Analytics() {
                         <div className="section-header">
 
                             <div>
+
                                 <h2>
                                     Assignment Performance
                                 </h2>
@@ -1540,6 +1708,7 @@ function Analytics() {
                                     AI-generated truck-load
                                     assignment results
                                 </p>
+
                             </div>
 
                         </div>
@@ -1547,14 +1716,39 @@ function Analytics() {
                         <div className="shipment-table">
 
                             <div className="table-header">
-                                <span>Assignment</span>
-                                <span>Truck</span>
-                                <span>Load</span>
-                                <span>Distance</span>
-                                <span>Cost</span>
-                                <span>Profit</span>
-                                <span>Score</span>
-                                <span>Status</span>
+
+                                <span>
+                                    Assignment
+                                </span>
+
+                                <span>
+                                    Truck
+                                </span>
+
+                                <span>
+                                    Load
+                                </span>
+
+                                <span>
+                                    Distance
+                                </span>
+
+                                <span>
+                                    Cost
+                                </span>
+
+                                <span>
+                                    Profit
+                                </span>
+
+                                <span>
+                                    Score
+                                </span>
+
+                                <span>
+                                    Status
+                                </span>
+
                             </div>
 
                             {assignments.map(
@@ -1655,6 +1849,7 @@ function Analytics() {
                         <div className="section-header">
 
                             <div>
+
                                 <h2>
                                     AI Recommendation Distribution
                                 </h2>
@@ -1664,6 +1859,7 @@ function Analytics() {
                                     generated by the optimization
                                     engine
                                 </p>
+
                             </div>
 
                         </div>
@@ -1694,7 +1890,6 @@ function Analytics() {
 
                             </div>
 
-
                             <div className="kpi-card">
 
                                 <div className="kpi-icon">
@@ -1719,7 +1914,6 @@ function Analytics() {
 
                             </div>
 
-
                             <div className="kpi-card">
 
                                 <div className="kpi-icon">
@@ -1743,7 +1937,6 @@ function Analytics() {
                                 </div>
 
                             </div>
-
 
                             <div className="kpi-card">
 

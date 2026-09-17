@@ -1,24 +1,154 @@
 import { useEffect, useState } from "react";
-import { getTrucks } from "../services/api";
+import { createTruck, getTrucks } from "../services/api";
 
 function Trucks() {
   const [trucks, setTrucks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadTrucks = async () => {
-      try {
-        const data = await getTrucks();
-        setTrucks(data);
-      } catch (error) {
-        console.error("Failed to load trucks:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
+  const [formData, setFormData] = useState({
+    truck_type: "Heavy",
+    capacity: "",
+    current_load: "0",
+    current_latitude: "",
+    current_longitude: "",
+    current_city: "",
+    status: "available",
+    destination: "",
+    cost_per_km: "",
+  });
+
+  const loadTrucks = async () => {
+    try {
+      setLoading(true);
+      const data = await getTrucks();
+      setTrucks(data);
+    } catch (error) {
+      console.error("Failed to load trucks:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadTrucks();
   }, []);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      truck_type: "Heavy",
+      capacity: "",
+      current_load: "0",
+      current_latitude: "",
+      current_longitude: "",
+      current_city: "",
+      status: "available",
+      destination: "",
+      cost_per_km: "",
+    });
+
+    setFormError("");
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    setFormError("");
+    setSuccessMessage("");
+
+    if (!formData.truck_type.trim()) {
+      setFormError("Truck type is required.");
+      return;
+    }
+
+    if (!formData.capacity || Number(formData.capacity) <= 0) {
+      setFormError("Capacity must be greater than 0.");
+      return;
+    }
+
+    if (Number(formData.current_load) < 0) {
+      setFormError("Current load cannot be negative.");
+      return;
+    }
+
+    if (
+      Number(formData.current_load) >
+      Number(formData.capacity)
+    ) {
+      setFormError("Current load cannot exceed truck capacity.");
+      return;
+    }
+
+    if (!formData.current_city.trim()) {
+      setFormError("Current city is required.");
+      return;
+    }
+
+    if (!formData.cost_per_km || Number(formData.cost_per_km) <= 0) {
+      setFormError("Cost per km must be greater than 0.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const truckData = {
+        truck_type: formData.truck_type.trim(),
+        capacity: Number(formData.capacity),
+        current_load: Number(formData.current_load),
+        current_latitude:
+          formData.current_latitude === ""
+            ? null
+            : Number(formData.current_latitude),
+        current_longitude:
+          formData.current_longitude === ""
+            ? null
+            : Number(formData.current_longitude),
+        current_city: formData.current_city.trim(),
+        status: formData.status,
+        destination:
+          formData.destination.trim() === ""
+            ? null
+            : formData.destination.trim(),
+        cost_per_km: Number(formData.cost_per_km),
+      };
+
+      await createTruck(truckData);
+
+      await loadTrucks();
+
+      setShowForm(false);
+      resetForm();
+      setSuccessMessage("Truck added successfully.");
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to create truck:", error);
+
+      const message =
+        error.response?.data?.detail ||
+        "Failed to create truck. Please try again.";
+
+      setFormError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const totalTrucks = trucks.length;
 
@@ -62,6 +192,12 @@ function Trucks() {
         </div>
       ) : (
         <>
+          {successMessage && (
+            <div className="success-message">
+              ✓ {successMessage}
+            </div>
+          )}
+
           {/* TRUCK KPIs */}
 
           <section className="kpi-grid">
@@ -152,6 +288,16 @@ function Trucks() {
                   Registered trucks and their current operational status
                 </p>
               </div>
+
+              <button
+                className="primary-button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm(true);
+                }}
+              >
+                + Add Truck
+              </button>
             </div>
 
             <div className="truck-table">
@@ -216,6 +362,201 @@ function Trucks() {
 
           </section>
         </>
+      )}
+
+      {/* ADD TRUCK MODAL */}
+
+      {showForm && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!saving) {
+              setShowForm(false);
+            }
+          }}
+        >
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+
+            <div className="modal-header">
+              <div>
+                <p className="dashboard-label">
+                  FLEET MANAGEMENT
+                </p>
+
+                <h2>Add New Truck</h2>
+
+                <p>
+                  Register a vehicle into the fleet.
+                </p>
+              </div>
+
+              <button
+                className="modal-close"
+                onClick={() => setShowForm(false)}
+                disabled={saving}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+
+              <div className="form-grid">
+
+                <div className="form-group">
+                  <label>Truck Type *</label>
+
+                  <select
+                    name="truck_type"
+                    value={formData.truck_type}
+                    onChange={handleChange}
+                  >
+                    <option value="Heavy">Heavy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Light">Light</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Capacity (kg) *</label>
+
+                  <input
+                    type="number"
+                    name="capacity"
+                    value={formData.capacity}
+                    onChange={handleChange}
+                    min="1"
+                    placeholder="e.g. 15000"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Current Load (kg)</label>
+
+                  <input
+                    type="number"
+                    name="current_load"
+                    value={formData.current_load}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Current City *</label>
+
+                  <input
+                    type="text"
+                    name="current_city"
+                    value={formData.current_city}
+                    onChange={handleChange}
+                    placeholder="e.g. Mumbai"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Latitude</label>
+
+                  <input
+                    type="number"
+                    name="current_latitude"
+                    value={formData.current_latitude}
+                    onChange={handleChange}
+                    step="any"
+                    placeholder="e.g. 19.076"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Longitude</label>
+
+                  <input
+                    type="number"
+                    name="current_longitude"
+                    value={formData.current_longitude}
+                    onChange={handleChange}
+                    step="any"
+                    placeholder="e.g. 72.8777"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Status</label>
+
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                  >
+                    <option value="available">Available</option>
+                    <option value="waiting">Waiting</option>
+                    <option value="in_transit">In Transit</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Destination</label>
+
+                  <input
+                    type="text"
+                    name="destination"
+                    value={formData.destination}
+                    onChange={handleChange}
+                    placeholder="e.g. Pune"
+                  />
+                </div>
+
+                <div className="form-group form-full">
+                  <label>Operating Cost (₹ / km) *</label>
+
+                  <input
+                    type="number"
+                    name="cost_per_km"
+                    value={formData.cost_per_km}
+                    onChange={handleChange}
+                    min="0.01"
+                    step="0.01"
+                    placeholder="e.g. 25"
+                  />
+                </div>
+
+              </div>
+
+              {formError && (
+                <div className="form-error">
+                  ⚠ {formError}
+                </div>
+              )}
+
+              <div className="modal-actions">
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowForm(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={saving}
+                >
+                  {saving ? "Creating..." : "Create Truck"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+        </div>
       )}
 
     </div>
