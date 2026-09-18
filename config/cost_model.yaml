@@ -1,0 +1,36 @@
+# Cost model configuration for AI Fleet Optimizer.
+# All rates in INR unless noted.
+
+defaults:
+  fuel_price_per_litre_inr: 90.0
+  driver_cost_per_km_inr: 5.0
+  toll_cost_per_km_inr: 3.0
+  maintenance_cost_per_km_inr: 2.0
+  average_payload_tonnes: 12.0
+
+truck_classes:
+  HCV:
+    mileage_km_per_litre: 3.5
+    description: "Heavy Commercial Vehicle (multi-axle, >12T)"
+  MCV:
+    mileage_km_per_litre: 5.5
+    description: "Medium Commercial Vehicle (7.5-12T)"
+  LCV:
+    mileage_km_per_litre: 8.0
+    description: "Light Commercial Vehicle (<7.5T)"
+  default:
+    mileage_km_per_litre: 4.5
+    description: "Fallback for unknown truck types"
+
+emissions:
+  diesel_co2_kg_per_litre: 2.68
+
+# Multi-objective benchmark parameters.
+# carbon_price_inr_per_kg: internal shadow price of CO2. Rs 8/kg
+#   = ~$95/ton, in line with EU ETS and high-end voluntary markets.
+# ml_rupee_per_point: converts an ML score adjustment (+-10) to
+#   a rupee bonus/penalty in the AI strategy. Rs 300/point means
+#   +10 -> +3000 INR, meaningful but not dominant vs profit.
+benchmark:
+  carbon_price_inr_per_kg: 8.0
+  ml_rupee_per_point: 300.0

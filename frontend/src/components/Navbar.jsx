@@ -1,4 +1,7 @@
-import { NavLink, useNavigate } from "react-router-dom";
+﻿import { NavLink, useNavigate } from "react-router-dom";
+
+import { useAuth } from "../context/AuthContext";
+
 
 const navigation = [
   { to: "/", label: "Dashboard", icon: "⌂" },
@@ -8,13 +11,28 @@ const navigation = [
   { to: "/analytics", label: "Analytics", icon: "◫" },
 ];
 
+
 function Navbar() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("fleet_optimizer_logged_in");
+    logout();
     navigate("/login", { replace: true });
   };
+
+  const roleLabel = user?.role
+    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+    : "";
+
+  const initials = user?.full_name
+    ? user.full_name
+        .split(" ")
+        .map((s) => s[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
 
   return (
     <nav className="navbar">
@@ -33,9 +51,13 @@ function Navbar() {
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
           >
-            <span className="nav-link-icon" aria-hidden="true">{item.icon}</span>
+            <span className="nav-link-icon" aria-hidden="true">
+              {item.icon}
+            </span>
             <span>{item.label}</span>
           </NavLink>
         ))}
@@ -48,6 +70,16 @@ function Navbar() {
           <span>Decision engine ready</span>
         </div>
       </div>
+
+      {user && (
+        <div className="navbar-user" title={user.email}>
+          <div className="navbar-user-avatar">{initials}</div>
+          <div className="navbar-user-info">
+            <strong>{user.full_name}</strong>
+            <span>{roleLabel}</span>
+          </div>
+        </div>
+      )}
 
       <button className="logout-button" onClick={handleLogout}>
         <span aria-hidden="true">↪</span>

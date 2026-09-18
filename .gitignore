@@ -6,4 +6,5 @@ __pycache__/
 .ipynb_checkpoints/
 node_modules/
 dist/
-build/
+build/reports/*.json
+reports/*.csv

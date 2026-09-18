@@ -1,43 +1,54 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
+import { useAuth } from "../context/AuthContext";
+
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const redirectTo = location.state?.from?.pathname || "/";
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError("");
 
-    if (!username.trim() || !password) {
-      setError("Please enter username and password.");
+    if (!email.trim() || !password) {
+      setError("Please enter email and password.");
       return;
     }
 
     setLoading(true);
-
-    setTimeout(() => {
-      if (
-        username.trim() === "admin" &&
-        password === "admin123"
-      ) {
-        localStorage.setItem(
-          "fleet_optimizer_logged_in",
-          "true"
-        );
-
-        navigate("/", { replace: true });
-      } else {
-        setError("Invalid username or password.");
-      }
-
+    try {
+      await login(email.trim(), password);
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      const message =
+        err.response?.data?.detail ||
+        "Invalid email or password.";
+      setError(message);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  const fillDemo = (role) => {
+    const map = {
+      admin: ["admin@fleetops.in", "admin123"],
+      manager: ["manager@fleetops.in", "manager123"],
+      driver: ["driver@fleetops.in", "driver123"],
+    };
+    const [e, p] = map[role] || ["", ""];
+    setEmail(e);
+    setPassword(p);
+    setError("");
   };
 
   return (
@@ -109,16 +120,16 @@ function Login() {
 
           <form className="login-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="username">Username</label>
+              <label htmlFor="email">Email</label>
               <div className="login-input-wrap">
                 <span aria-hidden="true">◎</span>
                 <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="Enter username"
-                  autoComplete="username"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -155,9 +166,31 @@ function Login() {
             </button>
           </form>
 
-          <div className="login-demo-note">
-            <span className="login-demo-dot" />
-            <span>Demo environment · Fleet management access</span>
+          <div className="login-demo-creds">
+            <p className="login-demo-label">Demo accounts</p>
+            <div className="login-demo-buttons">
+              <button
+                type="button"
+                onClick={() => fillDemo("admin")}
+                className="demo-chip"
+              >
+                admin
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemo("manager")}
+                className="demo-chip"
+              >
+                manager
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemo("driver")}
+                className="demo-chip"
+              >
+                driver
+              </button>
+            </div>
           </div>
 
           <div className="login-footer">

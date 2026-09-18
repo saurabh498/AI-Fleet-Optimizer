@@ -11,6 +11,8 @@ from backend.services.route_optimizer import (
     calculate_route_efficiency
 )
 
+from backend.services.routing import get_route_km
+
 def calculate_distance(
     lat1: float,
     lon1: float,
@@ -138,12 +140,26 @@ def find_backhaul_matches(
         TruckLocation.timestamp.desc()
     ).first()
 
-    if not latest_location:
-        return {
-            "truck_id": truck_id,
-            "message": "No location data available for this truck",
-            "matches": []
-        }
+    # Fall back to the truck's own current position when
+    # no GPS history exists (fresh truck, reset, etc.).
+    if latest_location is None:
+        if (
+            truck.current_latitude is None
+            or truck.current_longitude is None
+        ):
+            return {
+                "truck_id": truck_id,
+                "message": "No location data available for this truck",
+                "matches": []
+            }
+
+        # Build a lightweight stand-in with the same shape.
+        class _Coords:
+            pass
+
+        latest_location = _Coords()
+        latest_location.latitude = truck.current_latitude
+        latest_location.longitude = truck.current_longitude
 
     # -------------------------------------------------
     # 3. Calculate remaining capacity
@@ -197,20 +213,23 @@ def find_backhaul_matches(
         # Calculate distance to pickup
         # -------------------------------------------------
 
-        distance_to_pickup = calculate_distance(
+        distance_to_pickup = get_route_km(
             latest_location.latitude,
             latest_location.longitude,
             shipment.pickup_latitude,
-            shipment.pickup_longitude
+            shipment.pickup_longitude,
+            db=db
         )
 
         # -------------------------------------------------
         # Calculate estimated pickup cost
         # -------------------------------------------------
 
-        estimated_pickup_cost = (
-            distance_to_pickup * truck.cost_per_km
-        )
+        from backend.services.cost_model import estimate_trip_cost
+        estimated_pickup_cost = estimate_trip_cost(
+            distance_to_pickup,
+            truck.truck_type
+        )["total_cost"]
 
         # -------------------------------------------------
         # Calculate estimated net revenue
@@ -236,7 +255,8 @@ def find_backhaul_matches(
                 pickup_longitude=shipment.pickup_longitude,
                 destination_latitude=shipment.destination_latitude,
                 destination_longitude=shipment.destination_longitude,
-                cost_per_km=truck.cost_per_km
+                truck_type=truck.truck_type,
+                db=db
             )
 
             route_efficiency = calculate_route_efficiency(
@@ -246,11 +266,15 @@ def find_backhaul_matches(
             )
 
         else:
+            from backend.services.emissions import estimate_co2
             route = {
                 "pickup_distance_km": round(distance_to_pickup, 2),
                 "delivery_distance_km": None,
                 "total_distance_km": None,
-                "estimated_cost": round(estimated_pickup_cost, 2)
+                "estimated_cost": round(estimated_pickup_cost, 2),
+                "co2_kg": estimate_co2(
+                    distance_to_pickup, truck.truck_type
+                )["co2_kg"],
             }
 
             route_efficiency = {
@@ -368,16 +392,40 @@ def find_backhaul_matches(
         efficiency_score = route_efficiency["efficiency_score"]
 
         if efficiency_score >= 70:
-          score += 20
-
+            score += 20
         elif efficiency_score >= 40:
-          score += 10
-
+            score += 10
         elif efficiency_score >= 20:
-          score += 5
-
+            score += 5
         else:
-         score -= 10       
+            score -= 10
+
+        # -------------------------------------------------
+        # Total trip distance penalty
+        # -------------------------------------------------
+
+        total_route_km = route.get("total_distance_km")
+
+        if total_route_km is not None:
+            if total_route_km >= 1500:
+                score -= 30
+            elif total_route_km >= 800:
+                score -= 15
+            elif total_route_km >= 400:
+                score -= 5
+
+        # -------------------------------------------------
+        # CO2 emissions penalty
+        # -------------------------------------------------
+
+        total_co2 = route.get("co2_kg") or 0
+
+        if total_co2 >= 800:
+            score -= 25
+        elif total_co2 >= 400:
+            score -= 15
+        elif total_co2 >= 200:
+            score -= 5
 
         # -------------------------------------------------
         # Generate recommendation reasons
@@ -560,8 +608,24 @@ def find_backhaul_matches(
             )
         
         # -------------------------------------------------
-        # Recommendation level
+        # CO2 emissions reason
         # -------------------------------------------------
+
+        total_co2 = route.get("co2_kg") or 0
+
+        if total_co2 >= 800:
+            reasons.append(
+                f"High CO2 emissions ({total_co2:.0f} kg)"
+            )
+        elif total_co2 >= 400:
+            reasons.append(
+                f"Moderate CO2 emissions ({total_co2:.0f} kg)"
+            )
+        elif total_co2 > 0:
+            reasons.append(
+                f"Low CO2 emissions ({total_co2:.0f} kg)"
+            )
+
 
         if score >= 180:
 
@@ -617,8 +681,18 @@ def find_backhaul_matches(
             "estimated_route_cost": route["estimated_cost"],
 
             "estimated_route_profit": route_efficiency[
-                 "estimated_profit"
+                "estimated_profit"
             ],
+
+            "estimated_cost_breakdown": route.get(
+                "cost_breakdown"
+            ),
+
+            "co2_kg": route.get("co2_kg"),
+
+            "co2_per_km_kg": route.get(
+                "co2_breakdown", {}
+            ).get("co2_per_km_kg"),
 
             "route_efficiency_score": route_efficiency[
                  "efficiency_score"

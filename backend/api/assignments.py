@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
+from backend.api.deps import get_current_user, require_role
 from backend.models.assignment import Assignment
 from backend.models.shipment import Shipment
 from backend.models.truck import Truck
@@ -16,10 +17,14 @@ from backend.services.arrival_detection import detect_arrival
 
 router = APIRouter(
     prefix="/assignments",
-    tags=["Assignments"]
+    tags=["Assignments"],
+    dependencies=[Depends(get_current_user)],
 )
 
-@router.post("/truck/{truck_id}/load/{load_id}")
+@router.post(
+    "/truck/{truck_id}/load/{load_id}",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def assign_shipment(
     truck_id: int,
     load_id: int,
@@ -318,7 +323,10 @@ def get_assignment(
     return assignment
 
 
-@router.put("/{assignment_id}/start")
+@router.put(
+    "/{assignment_id}/start",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def start_assignment(
     assignment_id: int,
     db: Session = Depends(get_db)
@@ -465,7 +473,10 @@ def start_assignment(
     }
 
 
-@router.put("/{assignment_id}/complete")
+@router.put(
+    "/{assignment_id}/complete",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def complete_assignment(
     assignment_id: int,
     db: Session = Depends(get_db)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import {
   getTrucks,
   getShipments,
@@ -30,8 +30,7 @@ function Dashboard() {
         const decisionResults = await Promise.all(
           truckData.map(async (truck) => {
             try {
-              const decision = await getTruckDecision(truck.truck_id);
-              return decision;
+              return await getTruckDecision(truck.truck_id);
             } catch (error) {
               console.error(
                 `Failed to load decision for Truck #${truck.truck_id}:`,
@@ -54,14 +53,34 @@ function Dashboard() {
   }, []);
 
   const totalTrucks = trucks.length;
-  const availableTrucks = trucks.filter((truck) => truck.status === "available").length;
-  const assignedTrucks = trucks.filter((truck) => truck.status === "assigned").length;
-  const inTransitTrucks = trucks.filter((truck) => truck.status === "in_transit").length;
-  const waitingTrucks = trucks.filter((truck) => truck.status === "waiting").length;
+  const availableTrucks = trucks.filter((t) => t.status === "available").length;
+  const assignedTrucks = trucks.filter((t) => t.status === "assigned").length;
+  const inTransitTrucks = trucks.filter((t) => t.status === "in_transit").length;
+  const waitingTrucks = trucks.filter((t) => t.status === "waiting").length;
 
   const totalShipments = shipments.length;
-  const availableShipments = shipments.filter((shipment) => shipment.status === "available").length;
-  const assignedShipments = shipments.filter((shipment) => shipment.status === "assigned").length;
+  const availableShipments = shipments.filter((s) => s.status === "available").length;
+  const assignedShipments = shipments.filter((s) => s.status === "assigned").length;
+
+  // Environmental + cost aggregation from live decisions
+  const totalCo2 = recommendations.reduce((sum, r) => {
+    const co2 = r?.best_match?.co2_kg;
+    return sum + (co2 ? Number(co2) : 0);
+  }, 0);
+
+  const totalRouteCost = recommendations.reduce((sum, r) => {
+    const cost = r?.best_match?.estimated_route_cost;
+    return sum + (cost ? Number(cost) : 0);
+  }, 0);
+
+  const totalRouteDistance = recommendations.reduce((sum, r) => {
+    const d = r?.best_match?.route?.total_distance_km;
+    return sum + (d ? Number(d) : 0);
+  }, 0);
+
+  const recommendationsWithCo2 = recommendations.filter(
+    (r) => r?.best_match?.co2_kg != null
+  ).length;
 
   return (
     <div className="dashboard">
@@ -90,6 +109,58 @@ function Dashboard() {
             <KpiCard title="In Transit" value={inTransitTrucks} icon="🚚" description="Currently transporting" />
             <KpiCard title="Waiting" value={waitingTrucks} icon="⏳" description="Waiting for loads" />
           </section>
+
+          {/* Environmental & cost impact of AI recommendations */}
+          {recommendationsWithCo2 > 0 && (
+            <section className="dashboard-section environmental-section">
+              <div className="section-header">
+                <div>
+                  <h2>Environmental & Cost Impact</h2>
+                  <p>
+                    Aggregate footprint of AI-recommended backhauls
+                    across the fleet
+                  </p>
+                </div>
+                <span className="section-live-pill">
+                  Live · {recommendationsWithCo2} recommendation
+                  {recommendationsWithCo2 === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="kpi-grid">
+                <KpiCard
+                  title="Total CO₂"
+                  value={`${totalCo2.toFixed(0)} kg`}
+                  icon="🌱"
+                  description="Estimated across recommended routes"
+                />
+                <KpiCard
+                  title="Route Cost"
+                  value={`₹${totalRouteCost.toLocaleString("en-IN", {
+                    maximumFractionDigits: 0,
+                  })}`}
+                  icon="💸"
+                  description="Fuel + driver + toll + maintenance"
+                />
+                <KpiCard
+                  title="Route Distance"
+                  value={`${totalRouteDistance.toFixed(0)} km`}
+                  icon="🛣️"
+                  description="Real road distance via OSRM"
+                />
+                <KpiCard
+                  title="CO₂ / Route"
+                  value={
+                    recommendationsWithCo2 > 0
+                      ? `${(totalCo2 / recommendationsWithCo2).toFixed(1)} kg`
+                      : "—"
+                  }
+                  icon="📊"
+                  description="Average per recommendation"
+                />
+              </div>
+            </section>
+          )}
 
           <section className="dashboard-section">
             <div className="section-header">
@@ -143,8 +214,8 @@ function Dashboard() {
               {recommendations.length === 0 ? (
                 <div className="no-recommendations">No AI recommendations available.</div>
               ) : (
-                recommendations.map((recommendation) => (
-                  <AIRecommendation key={recommendation.truck_id} recommendation={recommendation} />
+                recommendations.map((rec) => (
+                  <AIRecommendation key={rec.truck_id} recommendation={rec} />
                 ))
               )}
             </div>

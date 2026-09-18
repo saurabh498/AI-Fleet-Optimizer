@@ -1,0 +1,1088 @@
+﻿
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\baseline_demand_model.py =====
+from pathlib import Path
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import numpy as np
+import joblib
+
+from ml.feature_engineering import prepare_features
+
+
+MODEL_PATH = Path("ml/models/baseline_demand_model.joblib")
+
+
+def train_baseline_model():
+    X, y = prepare_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.20, random_state=42
+    )
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+
+    if non_zero_actual.any():
+        mape = np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    else:
+        mape = 0.0
+
+    return {
+        "model": model,
+        "mae": mae,
+        "rmse": rmse,
+        "mape": mape,
+        "training_samples": len(X_train),
+        "testing_samples": len(X_test),
+        "feature_count": len(X.columns),
+        "feature_columns": list(X.columns)
+    }
+
+
+def save_model(result):
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    model_package = {
+        "model": result["model"],
+        "feature_columns": result["feature_columns"],
+        "model_name": "Linear Regression",
+        "model_version": "baseline-v1",
+        "target": "average_demand",
+        "mae": result["mae"],
+        "rmse": result["rmse"],
+        "mape": result["mape"]
+    }
+
+    joblib.dump(model_package, MODEL_PATH)
+
+    return MODEL_PATH
+
+
+if __name__ == "__main__":
+    result = train_baseline_model()
+    model_path = save_model(result)
+
+    print("=" * 50)
+    print("BASELINE DEMAND MODEL")
+    print("=" * 50)
+    print("Model              : Linear Regression")
+    print("Model version      : baseline-v1")
+    print("Training samples   :", result["training_samples"])
+    print("Testing samples    :", result["testing_samples"])
+    print("Feature count      :", result["feature_count"])
+
+    print("\nEvaluation:")
+    print("MAE                :", round(result["mae"], 4))
+    print("RMSE               :", round(result["rmse"], 4))
+    print("MAPE               :", round(result["mape"], 2), "%")
+
+    print("\nModel saved to     :", model_path)
+
+    print("=" * 50)
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\baseline_waiting_time_model.py =====
+from pathlib import Path
+
+import joblib
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+import numpy as np
+
+from ml.waiting_time_features import prepare_waiting_time_features
+
+
+MODEL_PATH = Path("ml/models/baseline_waiting_time_model.joblib")
+
+
+def train_model():
+    X, y = prepare_waiting_time_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42
+    )
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+    mape = (
+        np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    )
+
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    package = {
+        "model": model,
+        "feature_columns": list(X.columns),
+        "model_name": "Linear Regression",
+        "model_version": "baseline-waiting-v1",
+        "target": "average_waiting_time",
+        "metrics": {
+            "MAE": round(mae, 4),
+            "RMSE": round(rmse, 4),
+            "MAPE": round(mape, 2)
+        }
+    }
+
+    joblib.dump(package, MODEL_PATH)
+
+    print("=" * 50)
+    print("BASELINE WAITING-TIME MODEL")
+    print("=" * 50)
+
+    print("Training rows :", len(X_train))
+    print("Testing rows  :", len(X_test))
+    print("Features      :", len(X.columns))
+
+    print("\nModel         : Linear Regression")
+    print(f"MAE           : {mae:.4f} hours")
+    print(f"RMSE          : {rmse:.4f} hours")
+    print(f"MAPE          : {mape:.2f}%")
+
+    print("\nModel saved to:")
+    print(MODEL_PATH)
+
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    train_model()
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\feature_engineering.py =====
+import pandas as pd
+
+from backend.database.connection import SessionLocal
+from backend.models.historical_shipment import HistoricalShipment
+
+
+FEATURE_COLUMNS = [
+    "city",
+    "hour",
+    "day_of_week",
+    "available_loads",
+    "completed_loads"
+]
+
+TARGET_COLUMN = "average_demand"
+
+
+def load_historical_data():
+    db = SessionLocal()
+
+    try:
+        records = db.query(HistoricalShipment).all()
+
+        data = [
+            {
+                "date": record.date,
+                "city": record.city,
+                "hour": record.hour,
+                "day_of_week": record.day_of_week,
+                "available_loads": record.available_loads,
+                "completed_loads": record.completed_loads,
+                "average_waiting_time": record.average_waiting_time,
+                "average_demand": record.average_demand
+            }
+            for record in records
+        ]
+
+        return pd.DataFrame(data)
+
+    finally:
+        db.close()
+
+
+def prepare_features():
+    df = load_historical_data()
+
+    if df.empty:
+        raise ValueError(
+            "Historical shipment dataset is empty."
+        )
+
+    X = df[FEATURE_COLUMNS].copy()
+    y = df[TARGET_COLUMN].copy()
+
+    X = pd.get_dummies(
+        X,
+        columns=["city"],
+        dtype=int
+    )
+
+    return X, y
+
+
+if __name__ == "__main__":
+    X, y = prepare_features()
+
+    print("=" * 50)
+    print("FEATURE ENGINEERING")
+    print("=" * 50)
+
+    print("Dataset rows :", len(X))
+    print("Feature count:", len(X.columns))
+    print("Target       :", TARGET_COLUMN)
+
+    print("\nFeatures:")
+    for column in X.columns:
+        print(" -", column)
+
+    print("\nTarget statistics:")
+    print(y.describe())
+
+    print("=" * 50)
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\generate_historical_data.py =====
+from datetime import date, timedelta
+import random
+
+from backend.database.connection import SessionLocal
+from backend.models.historical_shipment import HistoricalShipment
+
+
+CITIES = [
+    "Mumbai",
+    "Pune",
+    "Ahmedabad",
+    "Surat",
+    "Delhi",
+    "Gurgaon",
+    "Jaipur",
+    "Indore",
+    "Bhopal",
+    "Hyderabad",
+    "Bengaluru",
+    "Chennai",
+    "Kolkata",
+    "Nagpur"
+]
+
+TOTAL_RECORDS = 5000
+
+START_DATE = date(2026, 1, 1)
+
+
+def generate_record(index: int):
+    record_date = START_DATE + timedelta(days=index // (len(CITIES) * 24))
+
+    city = random.choice(CITIES)
+
+    hour = random.randint(0, 23)
+
+    day_of_week = record_date.weekday()
+
+    # Base demand
+    demand = random.uniform(5, 25)
+
+    # Morning and evening logistics peaks
+    if 7 <= hour <= 10:
+        demand += random.uniform(8, 18)
+
+    elif 17 <= hour <= 21:
+        demand += random.uniform(10, 20)
+
+    # Weekday demand is generally higher
+    if day_of_week < 5:
+        demand += random.uniform(3, 8)
+
+    # Weekend reduction
+    else:
+        demand -= random.uniform(1, 5)
+
+    # City activity variation
+    city_factor = {
+        "Mumbai": 1.25,
+        "Delhi": 1.25,
+        "Pune": 1.10,
+        "Bengaluru": 1.15,
+        "Hyderabad": 1.05,
+        "Ahmedabad": 1.05,
+        "Surat": 1.00,
+        "Chennai": 1.05,
+        "Kolkata": 1.00,
+        "Jaipur": 0.90,
+        "Gurgaon": 1.10,
+        "Indore": 0.90,
+        "Bhopal": 0.85,
+        "Nagpur": 0.95
+    }
+
+    demand *= city_factor[city]
+
+    demand = max(1, demand)
+
+    available_loads = max(
+        1,
+        int(demand + random.uniform(2, 12))
+    )
+
+    completion_rate = random.uniform(0.65, 0.95)
+
+    completed_loads = min(
+        available_loads,
+        max(0, int(available_loads * completion_rate))
+    )
+
+    average_waiting_time = max(
+        0.25,
+        random.uniform(0.5, 4.0)
+        - (demand * 0.03)
+    )
+
+    average_demand = round(
+         max(0, demand + random.uniform(-2, 2)),
+         2
+    )
+
+    return HistoricalShipment(
+        date=record_date,
+        city=city,
+        hour=hour,
+        day_of_week=day_of_week,
+        available_loads=available_loads,
+        completed_loads=completed_loads,
+        average_waiting_time=round(
+            average_waiting_time,
+            2
+        ),
+        average_demand=average_demand
+    )
+
+
+def generate_dataset():
+    db = SessionLocal()
+
+    try:
+        existing_count = db.query(
+            HistoricalShipment
+        ).count()
+
+        if existing_count > 0:
+            print(
+                f"Historical dataset already contains "
+                f"{existing_count} records."
+            )
+            print("No new records generated.")
+            return
+
+        records = []
+
+        for index in range(TOTAL_RECORDS):
+            records.append(
+                generate_record(index)
+            )
+
+        db.bulk_save_objects(records)
+        db.commit()
+
+        print("=" * 50)
+        print("HISTORICAL DATASET GENERATED")
+        print("=" * 50)
+        print(f"Records created : {len(records)}")
+        print(f"Cities used     : {len(CITIES)}")
+        print(f"Start date      : {START_DATE}")
+        print("=" * 50)
+
+    except Exception as exc:
+        db.rollback()
+        print("Dataset generation failed:")
+        print(exc)
+
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    generate_dataset()
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\model_comparison.py =====
+from ml.baseline_demand_model import train_baseline_model
+from ml.random_forest_demand_model import train_random_forest_model
+from ml.xgboost_demand_model import train_xgboost_model
+
+
+def compare_models():
+    baseline = train_baseline_model()
+    random_forest = train_random_forest_model()
+    xgboost = train_xgboost_model()
+
+    models = [
+        {
+            "name": "Linear Regression",
+            "mae": baseline["mae"],
+            "rmse": baseline["rmse"],
+            "mape": baseline["mape"]
+        },
+        {
+            "name": "Random Forest",
+            "mae": random_forest["mae"],
+            "rmse": random_forest["rmse"],
+            "mape": random_forest["mape"]
+        },
+        {
+            "name": "XGBoost",
+            "mae": xgboost["mae"],
+            "rmse": xgboost["rmse"],
+            "mape": xgboost["mape"]
+        }
+    ]
+
+    best_model = min(models, key=lambda item: item["mae"])
+
+    print("=" * 70)
+    print("DEMAND MODEL COMPARISON")
+    print("=" * 70)
+
+    print(
+        f"{'Model':<22}"
+        f"{'MAE':>12}"
+        f"{'RMSE':>12}"
+        f"{'MAPE (%)':>12}"
+    )
+
+    print("-" * 70)
+
+    for model in models:
+        print(
+            f"{model['name']:<22}"
+            f"{model['mae']:>12.4f}"
+            f"{model['rmse']:>12.4f}"
+            f"{model['mape']:>12.2f}"
+        )
+
+    print("-" * 70)
+
+    print("\nBest model based on MAE:")
+    print("Model :", best_model["name"])
+    print("MAE   :", round(best_model["mae"], 4))
+    print("RMSE  :", round(best_model["rmse"], 4))
+    print("MAPE  :", round(best_model["mape"], 2), "%")
+
+    print("=" * 70)
+
+    return models, best_model
+
+
+if __name__ == "__main__":
+    compare_models()
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\random_forest_demand_model.py =====
+from pathlib import Path
+
+import joblib
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+
+from ml.feature_engineering import prepare_features
+
+
+MODEL_PATH = Path("ml/models/random_forest_demand_model.joblib")
+
+
+def train_random_forest_model():
+    X, y = prepare_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42
+    )
+
+    model = RandomForestRegressor(
+        n_estimators=200,
+        random_state=42,
+        max_depth=12,
+        min_samples_split=4,
+        n_jobs=-1
+    )
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+
+    if non_zero_actual.any():
+        mape = np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    else:
+        mape = 0.0
+
+    return {
+        "model": model,
+        "mae": mae,
+        "rmse": rmse,
+        "mape": mape,
+        "training_samples": len(X_train),
+        "testing_samples": len(X_test),
+        "feature_count": len(X.columns),
+        "feature_columns": list(X.columns)
+    }
+
+
+def save_model(result):
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    model_package = {
+        "model": result["model"],
+        "feature_columns": result["feature_columns"],
+        "model_name": "Random Forest Regressor",
+        "model_version": "random-forest-v1",
+        "target": "average_demand",
+        "mae": result["mae"],
+        "rmse": result["rmse"],
+        "mape": result["mape"]
+    }
+
+    joblib.dump(model_package, MODEL_PATH)
+
+    return MODEL_PATH
+
+
+if __name__ == "__main__":
+    result = train_random_forest_model()
+    model_path = save_model(result)
+
+    print("=" * 50)
+    print("RANDOM FOREST DEMAND MODEL")
+    print("=" * 50)
+    print("Model              : Random Forest Regressor")
+    print("Model version      : random-forest-v1")
+    print("Training samples   :", result["training_samples"])
+    print("Testing samples    :", result["testing_samples"])
+    print("Feature count      :", result["feature_count"])
+
+    print("\nEvaluation:")
+    print("MAE                :", round(result["mae"], 4))
+    print("RMSE               :", round(result["rmse"], 4))
+    print("MAPE               :", round(result["mape"], 2), "%")
+
+    print("\nModel saved to     :", model_path)
+
+    print("=" * 50)
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\random_forest_waiting_time_model.py =====
+from pathlib import Path
+
+import joblib
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+
+from ml.waiting_time_features import prepare_waiting_time_features
+
+
+MODEL_PATH = Path("ml/models/random_forest_waiting_time_model.joblib")
+
+
+def train_model():
+    X, y = prepare_waiting_time_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42
+    )
+
+    model = RandomForestRegressor(
+        n_estimators=200,
+        random_state=42,
+        max_depth=12,
+        min_samples_split=4,
+        n_jobs=-1
+    )
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+
+    mape = (
+        np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    )
+
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    package = {
+        "model": model,
+        "feature_columns": list(X.columns),
+        "model_name": "Random Forest Regressor",
+        "model_version": "random-forest-waiting-v1",
+        "target": "average_waiting_time",
+        "metrics": {
+            "MAE": round(mae, 4),
+            "RMSE": round(rmse, 4),
+            "MAPE": round(mape, 2)
+        }
+    }
+
+    joblib.dump(package, MODEL_PATH)
+
+    print("=" * 50)
+    print("RANDOM FOREST WAITING-TIME MODEL")
+    print("=" * 50)
+
+    print("Training rows :", len(X_train))
+    print("Testing rows  :", len(X_test))
+    print("Features      :", len(X.columns))
+
+    print("\nModel         : Random Forest Regressor")
+    print(f"MAE           : {mae:.4f} hours")
+    print(f"RMSE          : {rmse:.4f} hours")
+    print(f"MAPE          : {mape:.2f}%")
+
+    print("\nModel saved to:")
+    print(MODEL_PATH)
+
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    train_model()
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\waiting_time_features.py =====
+import pandas as pd
+
+from backend.database.connection import SessionLocal
+from backend.models.historical_shipment import HistoricalShipment
+
+
+FEATURE_COLUMNS = [
+    "city",
+    "hour",
+    "day_of_week",
+    "available_loads",
+    "completed_loads",
+    "average_demand"
+]
+
+TARGET_COLUMN = "average_waiting_time"
+
+
+def load_historical_data():
+    db = SessionLocal()
+
+    try:
+        records = db.query(HistoricalShipment).all()
+
+        data = [
+            {
+                "date": record.date,
+                "city": record.city,
+                "hour": record.hour,
+                "day_of_week": record.day_of_week,
+                "available_loads": record.available_loads,
+                "completed_loads": record.completed_loads,
+                "average_waiting_time": record.average_waiting_time,
+                "average_demand": record.average_demand
+            }
+            for record in records
+        ]
+
+        return pd.DataFrame(data)
+
+    finally:
+        db.close()
+
+
+def prepare_waiting_time_features():
+    df = load_historical_data()
+
+    if df.empty:
+        raise ValueError("Historical shipment dataset is empty.")
+
+    X = df[FEATURE_COLUMNS].copy()
+    y = df[TARGET_COLUMN].copy()
+
+    X = pd.get_dummies(
+        X,
+        columns=["city"],
+        dtype=int
+    )
+
+    return X, y
+
+
+if __name__ == "__main__":
+    X, y = prepare_waiting_time_features()
+
+    print("=" * 50)
+    print("WAITING-TIME FEATURE ENGINEERING")
+    print("=" * 50)
+
+    print("Dataset rows :", len(X))
+    print("Feature count:", len(X.columns))
+    print("Target       :", TARGET_COLUMN)
+
+    print("\nFeatures:")
+
+    for column in X.columns:
+        print(" -", column)
+
+    print("\nTarget statistics:")
+    print(y.describe())
+
+    print("=" * 50)
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\waiting_time_model_comparison.py =====
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+from xgboost import XGBRegressor
+
+import numpy as np
+
+from ml.waiting_time_features import prepare_waiting_time_features
+
+
+def calculate_metrics(y_test, predictions):
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+
+    mape = (
+        np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    )
+
+    return mae, rmse, mape
+
+
+def train_and_evaluate():
+    X, y = prepare_waiting_time_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42
+    )
+
+    models = {
+        "Linear Regression": LinearRegression(),
+
+        "Random Forest": RandomForestRegressor(
+            n_estimators=200,
+            random_state=42,
+            max_depth=12,
+            min_samples_split=4,
+            n_jobs=-1
+        ),
+
+        "XGBoost": XGBRegressor(
+            n_estimators=300,
+            max_depth=6,
+            learning_rate=0.05,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            objective="reg:squarederror",
+            random_state=42,
+            n_jobs=-1
+        )
+    }
+
+    results = []
+
+    for name, model in models.items():
+
+        model.fit(X_train, y_train)
+
+        predictions = model.predict(X_test)
+
+        mae, rmse, mape = calculate_metrics(
+            y_test,
+            predictions
+        )
+
+        results.append({
+            "model": name,
+            "mae": mae,
+            "rmse": rmse,
+            "mape": mape
+        })
+
+    results.sort(key=lambda item: item["mae"])
+
+    print("=" * 70)
+    print("WAITING-TIME MODEL COMPARISON")
+    print("=" * 70)
+
+    print(
+        f"{'Model':<22}"
+        f"{'MAE':>12}"
+        f"{'RMSE':>12}"
+        f"{'MAPE':>12}"
+    )
+
+    print("-" * 70)
+
+    for result in results:
+
+        print(
+            f"{result['model']:<22}"
+            f"{result['mae']:>12.4f}"
+            f"{result['rmse']:>12.4f}"
+            f"{result['mape']:>11.2f}%"
+        )
+
+    best = results[0]
+
+    print("-" * 70)
+
+    print("BEST MODEL")
+    print("Model :", best["model"])
+    print(f"MAE   : {best['mae']:.4f} hours")
+    print(f"RMSE  : {best['rmse']:.4f} hours")
+    print(f"MAPE  : {best['mape']:.2f}%")
+
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    train_and_evaluate()
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\xgboost_demand_model.py =====
+from pathlib import Path
+
+import joblib
+import numpy as np
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+
+from ml.feature_engineering import prepare_features
+
+
+MODEL_PATH = Path("ml/models/xgboost_demand_model.joblib")
+
+
+def train_xgboost_model():
+    X, y = prepare_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42
+    )
+
+    model = XGBRegressor(
+        n_estimators=300,
+        max_depth=6,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective="reg:squarederror",
+        random_state=42,
+        n_jobs=-1
+    )
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+
+    if non_zero_actual.any():
+        mape = np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    else:
+        mape = 0.0
+
+    return {
+        "model": model,
+        "mae": mae,
+        "rmse": rmse,
+        "mape": mape,
+        "training_samples": len(X_train),
+        "testing_samples": len(X_test),
+        "feature_count": len(X.columns),
+        "feature_columns": list(X.columns)
+    }
+
+
+def save_model(result):
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    model_package = {
+        "model": result["model"],
+        "feature_columns": result["feature_columns"],
+        "model_name": "XGBoost Regressor",
+        "model_version": "xgboost-v1",
+        "target": "average_demand",
+        "mae": result["mae"],
+        "rmse": result["rmse"],
+        "mape": result["mape"]
+    }
+
+    joblib.dump(model_package, MODEL_PATH)
+
+    return MODEL_PATH
+
+
+if __name__ == "__main__":
+    result = train_xgboost_model()
+    model_path = save_model(result)
+
+    print("=" * 50)
+    print("XGBOOST DEMAND MODEL")
+    print("=" * 50)
+    print("Model              : XGBoost Regressor")
+    print("Model version      : xgboost-v1")
+    print("Training samples   :", result["training_samples"])
+    print("Testing samples    :", result["testing_samples"])
+    print("Feature count      :", result["feature_count"])
+
+    print("\nEvaluation:")
+    print("MAE                :", round(result["mae"], 4))
+    print("RMSE               :", round(result["rmse"], 4))
+    print("MAPE               :", round(result["mape"], 2), "%")
+
+    print("\nModel saved to     :", model_path)
+
+    print("=" * 50)
+===== C:\Projects\AI-FLEET-OPTIMIZER\ml\xgboost_waiting_time_model.py =====
+from pathlib import Path
+
+import joblib
+import numpy as np
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+
+from ml.waiting_time_features import prepare_waiting_time_features
+
+
+MODEL_PATH = Path("ml/models/xgboost_waiting_time_model.joblib")
+
+
+def train_model():
+    X, y = prepare_waiting_time_features()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42
+    )
+
+    model = XGBRegressor(
+        n_estimators=300,
+        max_depth=6,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective="reg:squarederror",
+        random_state=42,
+        n_jobs=-1
+    )
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    non_zero_actual = y_test != 0
+
+    mape = (
+        np.mean(
+            np.abs(
+                (y_test[non_zero_actual] - predictions[non_zero_actual])
+                / y_test[non_zero_actual]
+            )
+        ) * 100
+    )
+
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    package = {
+        "model": model,
+        "feature_columns": list(X.columns),
+        "model_name": "XGBoost Regressor",
+        "model_version": "xgboost-waiting-v1",
+        "target": "average_waiting_time",
+        "metrics": {
+            "MAE": round(mae, 4),
+            "RMSE": round(rmse, 4),
+            "MAPE": round(mape, 2)
+        }
+    }
+
+    joblib.dump(package, MODEL_PATH)
+
+    print("=" * 50)
+    print("XGBOOST WAITING-TIME MODEL")
+    print("=" * 50)
+
+    print("Training rows :", len(X_train))
+    print("Testing rows  :", len(X_test))
+    print("Features      :", len(X.columns))
+
+    print("\nModel         : XGBoost Regressor")
+    print(f"MAE           : {mae:.4f} hours")
+    print(f"RMSE          : {rmse:.4f} hours")
+    print(f"MAPE          : {mape:.2f}%")
+
+    print("\nModel saved to:")
+    print(MODEL_PATH)
+
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    train_model()

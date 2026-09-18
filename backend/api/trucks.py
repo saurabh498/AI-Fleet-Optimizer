@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
+from backend.api.deps import get_current_user, require_role
 from backend.models.truck import Truck
 from backend.models.truck_location import TruckLocation
 from backend.schemas.truck import TruckCreate, TruckResponse
@@ -11,11 +12,16 @@ from backend.schemas.truck import TruckCreate, TruckResponse
 
 router = APIRouter(
     prefix="/trucks",
-    tags=["Trucks"]
+    tags=["Trucks"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
-@router.post("/", response_model=TruckResponse)
+@router.post(
+    "/",
+    response_model=TruckResponse,
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def create_truck(
     truck_data: TruckCreate,
     db: Session = Depends(get_db)
@@ -70,7 +76,11 @@ def get_truck(
     return truck
 
 
-@router.put("/{truck_id}", response_model=TruckResponse)
+@router.put(
+    "/{truck_id}",
+    response_model=TruckResponse,
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def update_truck(
     truck_id: int,
     truck_data: TruckCreate,
@@ -95,7 +105,10 @@ def update_truck(
     return truck
 
 
-@router.delete("/{truck_id}")
+@router.delete(
+    "/{truck_id}",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def delete_truck(
     truck_id: int,
     db: Session = Depends(get_db)

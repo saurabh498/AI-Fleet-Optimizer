@@ -15,6 +15,7 @@ from backend.api.backhaul import router as backhaul_router
 from backend.api.assignments import router as assignments_router
 from backend.api import demand_prediction
 from backend.api import waiting_time_prediction
+from backend.api.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -25,7 +26,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +39,7 @@ app.add_middleware(
 
 Base.metadata.create_all(bind=engine)
 
+app.include_router(auth_router)
 app.include_router(trucks_router)
 app.include_router(shipments_router)
 app.include_router(locations_router)
