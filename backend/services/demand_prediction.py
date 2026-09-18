@@ -4,7 +4,8 @@ import joblib
 import pandas as pd
 
 
-MODEL_PATH = Path("ml/models/xgboost_demand_model.joblib")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+MODEL_PATH = PROJECT_ROOT / "ml" / "models" / "xgboost_demand_model.joblib"
 
 
 def load_demand_model():

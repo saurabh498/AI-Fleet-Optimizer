@@ -654,6 +654,7 @@ function Analytics() {
                                                                 baseline.estimated_cost
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                     <div className="ai-value">
@@ -712,6 +713,7 @@ function Analytics() {
                                                                 baseline.estimated_profit
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                     <div className="ai-value">
@@ -1049,13 +1051,13 @@ function Analytics() {
                                         </div>
 
                                         <strong>
-                                            No comparable strategies
+                                            No valid comparison for this truck state
                                         </strong>
 
                                         <p>
                                             Both baseline and AI need
                                             a valid shipment selection
-                                            to calculate the comparison.
+                                            for this controlled evaluation.
                                         </p>
 
                                     </div>
@@ -1263,7 +1265,7 @@ function Analytics() {
                                 <div className="kpi-content">
 
                                     <p className="kpi-title">
-                                        Avg Waiting
+                                        Avg Assignment Waiting
                                     </p>
 
                                     <h2 className="kpi-value">
@@ -1271,7 +1273,7 @@ function Analytics() {
                                     </h2>
 
                                     <p className="kpi-description">
-                                        Average assignment waiting time
+                                        Average recorded waiting time per assignment
                                     </p>
 
                                 </div>
@@ -1311,7 +1313,7 @@ function Analytics() {
                                 <div className="kpi-content">
 
                                     <p className="kpi-title">
-                                        Backhaul Success
+                                        Backhaul Completion Rate
                                     </p>
 
                                     <h2 className="kpi-value">
@@ -1319,7 +1321,7 @@ function Analytics() {
                                     </h2>
 
                                     <p className="kpi-description">
-                                        Completed assignments with movement
+                                        Completed assignments with recorded movement
                                     </p>
 
                                 </div>
