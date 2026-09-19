@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createTruck, getTrucks } from "../services/api";
+import RoleGate from "../components/RoleGate";
 
 function Trucks() {
   const [trucks, setTrucks] = useState([]);
@@ -11,7 +12,7 @@ function Trucks() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const [formData, setFormData] = useState({
-    truck_type: "Heavy",
+    truck_type: "HCV",
     capacity: "",
     current_load: "0",
     current_latitude: "",
@@ -49,7 +50,7 @@ function Trucks() {
 
   const resetForm = () => {
     setFormData({
-      truck_type: "Heavy",
+      truck_type: "HCV",
       capacity: "",
       current_load: "0",
       current_latitude: "",
@@ -289,15 +290,17 @@ function Trucks() {
                 </p>
               </div>
 
-              <button
-                className="primary-button"
-                onClick={() => {
-                  resetForm();
-                  setShowForm(true);
-                }}
-              >
-                + Add Truck
-              </button>
+              <RoleGate allow={["manager", "admin"]}>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
+                  + Add Truck
+                </button>
+              </RoleGate>
             </div>
 
             <div className="truck-table">
@@ -414,9 +417,9 @@ function Trucks() {
                     value={formData.truck_type}
                     onChange={handleChange}
                   >
-                    <option value="Heavy">Heavy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Light">Light</option>
+                    <option value="HCV">HCV — Heavy Commercial Vehicle</option>
+                    <option value="MCV">MCV — Medium Commercial Vehicle</option>
+                    <option value="LCV">LCV — Light Commercial Vehicle</option>
                   </select>
                 </div>
 

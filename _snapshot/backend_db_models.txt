@@ -1,0 +1,403 @@
+﻿
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\assignment.py =====
+from datetime import datetime
+
+from sqlalchemy import String, Float, Integer, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+
+    assignment_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    truck_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("trucks.truck_id"),
+        nullable=False
+    )
+
+    load_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("shipments.load_id"),
+        nullable=False
+    )
+
+    match_score: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    estimated_distance: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    estimated_cost: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    estimated_profit: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    waiting_time: Mapped[float] = mapped_column(
+        Float,
+        default=0
+    )
+
+    recommendation: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="assigned",
+        nullable=False
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\assignment_history.py =====
+from datetime import datetime
+
+from sqlalchemy import String, Integer, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class AssignmentHistory(Base):
+    __tablename__ = "assignment_history"
+
+    history_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    assignment_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("assignments.assignment_id"),
+        nullable=False
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False
+    )
+
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\historical_shipment.py =====
+from datetime import date
+
+from sqlalchemy import String, Float, Integer, Date
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class HistoricalShipment(Base):
+    __tablename__ = "historical_shipments"
+
+    history_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False
+    )
+
+    city: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    hour: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    day_of_week: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    available_loads: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    completed_loads: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    average_waiting_time: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    average_demand: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\prediction.py =====
+from datetime import datetime
+
+from sqlalchemy import String, Float, Integer, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class Prediction(Base):
+    __tablename__ = "predictions"
+
+    prediction_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    truck_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("trucks.truck_id"),
+        nullable=False
+    )
+
+    location: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    predicted_demand: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    predicted_waiting_time: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    prediction_time: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\shipment.py =====
+from datetime import datetime
+
+from sqlalchemy import String, Float, Integer, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class Shipment(Base):
+    __tablename__ = "shipments"
+
+    load_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    pickup_city: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    pickup_latitude: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    pickup_longitude: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    destination_city: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    destination_latitude: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    destination_longitude: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    weight: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    volume: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    cargo_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False
+    )
+
+    pickup_start: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True
+    )
+
+    pickup_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True
+    )
+
+    delivery_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True
+    )
+
+    revenue: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="available"
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\truck.py =====
+from sqlalchemy import String, Float, Integer
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class Truck(Base):
+    __tablename__ = "trucks"
+
+    truck_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    truck_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False
+    )
+
+    capacity: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    current_load: Mapped[float] = mapped_column(
+        Float,
+        default=0
+    )
+
+    current_latitude: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    current_longitude: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+
+    current_city: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="available"
+    )
+
+    destination: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True
+    )
+
+    cost_per_km: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\truck_location.py =====
+from datetime import datetime
+
+from sqlalchemy import Float, Integer, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database.base import Base
+
+
+class TruckLocation(Base):
+    __tablename__ = "truck_locations"
+
+    location_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    truck_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("trucks.truck_id"),
+        nullable=False
+    )
+
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False
+    )
+
+    latitude: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    longitude: Mapped[float] = mapped_column(
+        Float,
+        nullable=False
+    )
+
+    speed: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True
+    )
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\models\__init__.py =====
+from backend.models.truck import Truck
+from backend.models.shipment import Shipment
+from backend.models.truck_location import TruckLocation
+from backend.models.assignment import Assignment
+from backend.models.historical_shipment import HistoricalShipment
+from backend.models.prediction import Prediction
+from backend.models.assignment_history import AssignmentHistory

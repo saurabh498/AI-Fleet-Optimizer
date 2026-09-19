@@ -4,6 +4,7 @@ import {
     getAssignments,
     getTrucks,
     getBaselineVsAI,
+    getBackhaulMatches,
 } from "../services/api";
 
 function Analytics() {
@@ -13,6 +14,7 @@ function Analytics() {
     const [selectedTruck, setSelectedTruck] = useState("");
 
     const [comparison, setComparison] = useState(null);
+    const [truckMatches, setTruckMatches] = useState(null);
 
     const [loading, setLoading] = useState(true);
     const [comparisonLoading, setComparisonLoading] =
@@ -97,6 +99,33 @@ function Analytics() {
 
         loadComparison();
     }, [selectedTruck]);
+
+        // ==========================================
+    // LOAD BACKHAUL MATCHES (for CO2 + cost detail)
+    // ==========================================
+
+    useEffect(() => {
+        if (!selectedTruck) {
+            setTruckMatches(null);
+            return;
+        }
+
+        const loadMatches = async () => {
+            try {
+                const data = await getBackhaulMatches(selectedTruck);
+                setTruckMatches(data);
+            } catch (error) {
+                console.error(
+                    "Failed to load backhaul matches:",
+                    error
+                );
+                setTruckMatches(null);
+            }
+        };
+
+        loadMatches();
+    }, [selectedTruck]);
+
 
     // ==========================================
     // EXISTING ANALYTICS CALCULATIONS
@@ -366,6 +395,15 @@ function Analytics() {
                 </div>
             ) : (
                 <>
+                    {assignments.length === 0 && (
+                        <div className="analytics-empty-hint">
+                            <strong>No assignments yet</strong>
+                            <p>
+                                Assign a backhaul to a truck via the Fleet page
+                                to populate assignment analytics.
+                            </p>
+                        </div>
+                    )}
 
                     {/* ==========================================
                         PHASE 9 — BASELINE VS AI
@@ -654,6 +692,7 @@ function Analytics() {
                                                                 baseline.estimated_cost
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                     <div className="ai-value">
@@ -712,6 +751,7 @@ function Analytics() {
                                                                 baseline.estimated_profit
                                                             )}
                                                         </strong>
+
                                                     </div>
 
                                                     <div className="ai-value">
@@ -1049,13 +1089,13 @@ function Analytics() {
                                         </div>
 
                                         <strong>
-                                            No comparable strategies
+                                            No valid comparison for this truck state
                                         </strong>
 
                                         <p>
                                             Both baseline and AI need
                                             a valid shipment selection
-                                            to calculate the comparison.
+                                            for this controlled evaluation.
                                         </p>
 
                                     </div>
@@ -1088,6 +1128,125 @@ function Analytics() {
 
                     </section>
 
+
+                    {/* ==========================================
+                        ENVIRONMENTAL & COST IMPACT
+                    ========================================== */}
+
+                    {truckMatches?.matches?.length > 0 && (() => {
+                        const topMatch = truckMatches.matches[0];
+                        const cost = topMatch.estimated_cost_breakdown || {};
+                        const co2 = topMatch.co2_kg;
+
+                        return (
+                            <section className="dashboard-section environmental-section">
+                                <div className="section-header">
+                                    <div>
+                                        <h2>Environmental & Cost Impact</h2>
+                                        <p>
+                                            Top-ranked backhaul for Truck #{selectedTruck}
+                                            {" — "}
+                                            {topMatch.pickup_city} → {topMatch.destination_city}
+                                        </p>
+                                    </div>
+                                    <div className="section-live-pill">
+                                        Live · {truckMatches.matches.length} matches
+                                    </div>
+                                </div>
+
+                                <div className="kpi-grid">
+                                    <div className="kpi-card">
+                                        <div className="kpi-icon">🌱</div>
+                                        <div className="kpi-content">
+                                            <p className="kpi-title">CO₂ Emissions</p>
+                                            <h2 className="kpi-value">
+                                                {co2 != null
+                                                    ? `${Number(co2).toFixed(1)} kg`
+                                                    : "—"}
+                                            </h2>
+                                            <p className="kpi-description">
+                                                {topMatch.co2_per_km_kg
+                                                    ? `${Number(topMatch.co2_per_km_kg).toFixed(3)} kg / km`
+                                                    : "Estimated via IPCC factor"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="kpi-card">
+                                        <div className="kpi-icon">⛽</div>
+                                        <div className="kpi-content">
+                                            <p className="kpi-title">Fuel Cost</p>
+                                            <h2 className="kpi-value">
+                                                ₹{Number(cost.fuel_cost || 0).toLocaleString("en-IN", {
+                                                    maximumFractionDigits: 0,
+                                                })}
+                                            </h2>
+                                            <p className="kpi-description">
+                                                {cost.fuel_litres
+                                                    ? `${Number(cost.fuel_litres).toFixed(1)} litres`
+                                                    : "—"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="kpi-card">
+                                        <div className="kpi-icon">👤</div>
+                                        <div className="kpi-content">
+                                            <p className="kpi-title">Driver Cost</p>
+                                            <h2 className="kpi-value">
+                                                ₹{Number(cost.driver_cost || 0).toLocaleString("en-IN", {
+                                                    maximumFractionDigits: 0,
+                                                })}
+                                            </h2>
+                                            <p className="kpi-description">
+                                                Long-haul driver allocation
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="kpi-card">
+                                        <div className="kpi-icon">🛣️</div>
+                                        <div className="kpi-content">
+                                            <p className="kpi-title">Toll + Maintenance</p>
+                                            <h2 className="kpi-value">
+                                                ₹
+                                                {(
+                                                    Number(cost.toll_cost || 0) +
+                                                    Number(cost.maintenance_cost || 0)
+                                                ).toLocaleString("en-IN", {
+                                                    maximumFractionDigits: 0,
+                                                })}
+                                            </h2>
+                                            <p className="kpi-description">
+                                                {cost.truck_class
+                                                    ? `${cost.truck_class} · ${cost.mileage_km_per_litre} km/L`
+                                                    : "—"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="cost-breakdown-bar">
+                                    <div className="cost-breakdown-row">
+                                        <span>Total Trip Cost</span>
+                                        <strong>
+                                            ₹{Number(cost.total_cost || 0).toLocaleString("en-IN", {
+                                                maximumFractionDigits: 0,
+                                            })}
+                                        </strong>
+                                    </div>
+                                    <div className="cost-breakdown-row muted">
+                                        <span>
+                                            Distance · {Number(topMatch.route?.total_distance_km || 0).toFixed(0)} km
+                                        </span>
+                                        <span>
+                                            Cost / km · ₹{Number(cost.cost_per_km || 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </section>
+                        );
+                    })()}
 
                     {/* ==========================================
                         EXISTING PERFORMANCE KPIs
@@ -1204,6 +1363,7 @@ function Analytics() {
                         OPERATIONAL METRICS
                     ========================================== */}
 
+                    {assignments.length > 0 && (
                     <section className="dashboard-section">
 
                         <div className="section-header">
@@ -1263,7 +1423,7 @@ function Analytics() {
                                 <div className="kpi-content">
 
                                     <p className="kpi-title">
-                                        Avg Waiting
+                                        Avg Assignment Waiting
                                     </p>
 
                                     <h2 className="kpi-value">
@@ -1271,7 +1431,7 @@ function Analytics() {
                                     </h2>
 
                                     <p className="kpi-description">
-                                        Average assignment waiting time
+                                        Average recorded waiting time per assignment
                                     </p>
 
                                 </div>
@@ -1311,7 +1471,7 @@ function Analytics() {
                                 <div className="kpi-content">
 
                                     <p className="kpi-title">
-                                        Backhaul Success
+                                        Backhaul Completion Rate
                                     </p>
 
                                     <h2 className="kpi-value">
@@ -1319,7 +1479,7 @@ function Analytics() {
                                     </h2>
 
                                     <p className="kpi-description">
-                                        Completed assignments with movement
+                                        Completed assignments with recorded movement
                                     </p>
 
                                 </div>
@@ -1329,12 +1489,13 @@ function Analytics() {
                         </div>
 
                     </section>
-
+                     )}
 
                     {/* ==========================================
                         VISUAL ANALYTICS
                     ========================================== */}
 
+                    {assignments.length > 0 && (
                     <section className="dashboard-section">
 
                         <div className="section-header">
@@ -1688,12 +1849,14 @@ function Analytics() {
                         </div>
 
                     </section>
+                    )}
 
 
                     {/* ==========================================
                         ASSIGNMENT PERFORMANCE
                     ========================================== */}
 
+                    {assignments.length > 0 && (
                     <section className="dashboard-section">
 
                         <div className="section-header">
@@ -1838,12 +2001,14 @@ function Analytics() {
                         </div>
 
                     </section>
+                        )}
 
 
                     {/* ==========================================
                         RECOMMENDATION SUMMARY
                     ========================================== */}
 
+                    {assignments.length > 0 && (
                     <section className="dashboard-section">
 
                         <div className="section-header">
@@ -1965,6 +2130,7 @@ function Analytics() {
                         </div>
 
                     </section>
+                    )}
 
                 </>
             )}

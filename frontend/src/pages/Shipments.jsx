@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createShipment, getShipments } from "../services/api";
+import RoleGate from "../components/RoleGate";
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -331,15 +332,17 @@ function Shipments() {
                 </p>
               </div>
 
-              <button
-                className="primary-button"
-                onClick={() => {
-                  resetForm();
-                  setShowForm(true);
-                }}
-              >
-                + Add Shipment
-              </button>
+              <RoleGate allow={["manager", "admin"]}>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
+                  + Add Shipment
+                </button>
+              </RoleGate>
             </div>
 
             <div className="shipment-table">

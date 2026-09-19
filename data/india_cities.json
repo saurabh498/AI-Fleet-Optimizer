@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "description": "Real Indian logistics hub data used to seed the historical demand generator.",
+    "sources": [
+      "Census of India 2011 (population baseline)",
+      "UN World Urbanization Prospects 2018 (2025 population projections)",
+      "MOSPI Annual Survey of Industries (industrial output index)",
+      "NHAI Toll Plaza Traffic Data (hourly + weekly freight patterns)"
+    ],
+    "industrial_index_note": "Normalized 0.80-1.30. Higher = more freight activity relative to Indian average. Derived from MOSPI state industrial output, adjusted for port/warehouse presence."
+  },
+  "cities": [
+    {"name": "Mumbai",     "state": "Maharashtra",   "latitude": 19.0760, "longitude": 72.8777, "population_2025": 21673000, "industrial_index": 1.25},
+    {"name": "Delhi",      "state": "Delhi",         "latitude": 28.6139, "longitude": 77.2090, "population_2025": 32941000, "industrial_index": 1.30},
+    {"name": "Pune",       "state": "Maharashtra",   "latitude": 18.5204, "longitude": 73.8567, "population_2025":  7000000, "industrial_index": 1.15},
+    {"name": "Ahmedabad",  "state": "Gujarat",       "latitude": 23.0225, "longitude": 72.5714, "population_2025":  8400000, "industrial_index": 1.10},
+    {"name": "Surat",      "state": "Gujarat",       "latitude": 21.1702, "longitude": 72.8311, "population_2025":  7500000, "industrial_index": 1.12},
+    {"name": "Gurgaon",    "state": "Haryana",       "latitude": 28.4595, "longitude": 77.0266, "population_2025":  1600000, "industrial_index": 1.15},
+    {"name": "Jaipur",     "state": "Rajasthan",     "latitude": 26.9124, "longitude": 75.7873, "population_2025":  4000000, "industrial_index": 0.95},
+    {"name": "Indore",     "state": "Madhya Pradesh","latitude": 22.7196, "longitude": 75.8577, "population_2025":  2500000, "industrial_index": 0.92},
+    {"name": "Bhopal",     "state": "Madhya Pradesh","latitude": 23.2599, "longitude": 77.4126, "population_2025":  2400000, "industrial_index": 0.85},
+    {"name": "Hyderabad",  "state": "Telangana",     "latitude": 17.3850, "longitude": 78.4867, "population_2025": 10500000, "industrial_index": 1.15},
+    {"name": "Bengaluru",  "state": "Karnataka",     "latitude": 12.9716, "longitude": 77.5946, "population_2025": 13600000, "industrial_index": 1.20},
+    {"name": "Chennai",    "state": "Tamil Nadu",    "latitude": 13.0827, "longitude": 80.2707, "population_2025": 11500000, "industrial_index": 1.15},
+    {"name": "Kolkata",    "state": "West Bengal",   "latitude": 22.5726, "longitude": 88.3639, "population_2025": 15300000, "industrial_index": 1.05},
+    {"name": "Nagpur",     "state": "Maharashtra",   "latitude": 21.1458, "longitude": 79.0882, "population_2025":  2900000, "industrial_index": 0.95}
+  ]
+}

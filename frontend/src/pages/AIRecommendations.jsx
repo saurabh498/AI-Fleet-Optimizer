@@ -137,7 +137,7 @@ function AIRecommendations() {
                 </p>
 
                 <h2 className="kpi-value">
-                  XGBoost
+                  XGBoost Regressor
                 </h2>
 
                 <p className="kpi-description">
@@ -157,7 +157,7 @@ function AIRecommendations() {
                 </p>
 
                 <h2 className="kpi-value">
-                  Regression
+                  Linear Regression
                 </h2>
 
                 <p className="kpi-description">

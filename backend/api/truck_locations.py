@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
+from backend.api.deps import get_current_user, require_role
 from backend.models.truck_location import TruckLocation
 from backend.models.truck import Truck
 from backend.schemas.truck_location import (
@@ -12,11 +13,16 @@ from backend.schemas.truck_location import (
 
 router = APIRouter(
     prefix="/locations",
-    tags=["Truck Locations"]
+    tags=["Truck Locations"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
-@router.post("/", response_model=TruckLocationResponse)
+@router.post(
+    "/",
+    response_model=TruckLocationResponse,
+    dependencies=[Depends(require_role("driver", "manager", "admin"))],
+)
 def create_location(
     location_data: TruckLocationCreate,
     db: Session = Depends(get_db)

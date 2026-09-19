@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
+from backend.api.deps import get_current_user
 from backend.models.prediction import Prediction
 from backend.schemas.demand_prediction import (
     DemandPredictionRequest,
@@ -12,7 +13,8 @@ from backend.services.demand_prediction import predict_demand
 
 router = APIRouter(
     prefix="/demand",
-    tags=["Demand Prediction"]
+    tags=["Demand Prediction"],
+    dependencies=[Depends(get_current_user)],
 )
 
 

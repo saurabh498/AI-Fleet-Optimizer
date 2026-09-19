@@ -1,4 +1,4 @@
-import {
+﻿import {
   BrowserRouter,
   Navigate,
   Route,
@@ -12,86 +12,94 @@ import AIRecommendations from "./pages/AIRecommendations";
 import Analytics from "./pages/Analytics";
 import Login from "./pages/Login";
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
 
 import "./App.css";
 
-function ProtectedRoute({ children }) {
-  const isLoggedIn =
-    localStorage.getItem(
-      "fleet_optimizer_logged_in"
-    ) === "true";
-
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
+function AppShell({ children }) {
+  return (
+    <>
+      <Navbar />
+      {children}
+    </>
+  );
 }
 
 function App() {
   return (
-    <BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
 
-      <Routes>
+          <Route
+            path="/login"
+            element={<Login />}
+          />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <Dashboard />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <>
-                <Navbar />
+          <Route
+            path="/trucks"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <Trucks />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
 
-                <Routes>
-                  <Route
-                    path="/"
-                    element={<Dashboard />}
-                  />
+          <Route
+            path="/shipments"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <Shipments />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
 
-                  <Route
-                    path="/trucks"
-                    element={<Trucks />}
-                  />
+          <Route
+            path="/ai-recommendations"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <AIRecommendations />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
 
-                  <Route
-                    path="/shipments"
-                    element={<Shipments />}
-                  />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <Analytics />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
 
-                  <Route
-                    path="/ai-recommendations"
-                    element={
-                      <AIRecommendations />
-                    }
-                  />
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
 
-                  <Route
-                    path="/analytics"
-                    element={<Analytics />}
-                  />
-
-                  <Route
-                    path="*"
-                    element={
-                      <Navigate
-                        to="/"
-                        replace
-                      />
-                    }
-                  />
-                </Routes>
-              </>
-            </ProtectedRoute>
-          }
-        />
-
-      </Routes>
-
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

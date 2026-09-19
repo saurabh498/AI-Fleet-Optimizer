@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
+from backend.api.deps import get_current_user
 from backend.models.prediction import Prediction
 from backend.schemas.waiting_time_prediction import (
     WaitingTimePredictionRequest,
@@ -14,7 +15,8 @@ from backend.services.waiting_time_prediction import (
 
 router = APIRouter(
     prefix="/waiting-time",
-    tags=["Waiting Time Prediction"]
+    tags=["Waiting Time Prediction"],
+    dependencies=[Depends(get_current_user)],
 )
 
 

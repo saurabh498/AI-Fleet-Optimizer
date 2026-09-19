@@ -34,10 +34,12 @@ from backend.services.route_optimizer import (
     calculate_route_distances,
     calculate_route_efficiency
 )
+from backend.api.deps import get_current_user
 
 router = APIRouter(
     prefix="/backhaul",
-    tags=["Backhaul Matching"]
+    tags=["Backhaul Matching"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -143,7 +145,8 @@ def optimize_route(
         pickup_longitude=shipment.pickup_longitude,
         destination_latitude=shipment.destination_latitude,
         destination_longitude=shipment.destination_longitude,
-        cost_per_km=truck.cost_per_km
+        truck_type=truck.truck_type,
+        db=db
     )
 
     # -------------------------------------------------

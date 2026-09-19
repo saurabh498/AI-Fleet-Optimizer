@@ -1,0 +1,1471 @@
+﻿
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\assignments.py =====
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+from backend.models.assignment import Assignment
+from backend.models.shipment import Shipment
+from backend.models.truck import Truck
+from backend.models.truck_location import TruckLocation
+from backend.services.backhaul_matching import find_backhaul_matches
+from backend.models.assignment_history import AssignmentHistory
+from backend.services.reoptimization import reoptimize_fleet
+from backend.services.fleet_assignment_executor import execute_fleet_assignments
+from backend.services.arrival_detection import detect_arrival
+
+router = APIRouter(
+    prefix="/assignments",
+    tags=["Assignments"]
+)
+
+@router.post("/truck/{truck_id}/load/{load_id}")
+def assign_shipment(
+    truck_id: int,
+    load_id: int,
+    db: Session = Depends(get_db)
+):
+    # -------------------------------------------------
+    # 1. Check truck
+    # -------------------------------------------------
+
+    truck = db.query(Truck).filter(
+        Truck.truck_id == truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    # -------------------------------------------------
+    # 2. Check shipment
+    # -------------------------------------------------
+
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    # -------------------------------------------------
+    # 3. Check shipment availability
+    # -------------------------------------------------
+
+    if shipment.status != "available":
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment is not available for assignment"
+        )
+
+    # -------------------------------------------------
+    # 4. Get matching recommendations
+    # -------------------------------------------------
+
+    matching_result = find_backhaul_matches(
+        truck_id,
+        db
+    )
+
+    if matching_result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    matches = matching_result.get(
+        "matches",
+        []
+    )
+
+    # -------------------------------------------------
+    # 5. Find requested shipment in matches
+    # -------------------------------------------------
+
+    selected_match = None
+
+    for match in matches:
+
+        if match["load_id"] == load_id:
+            selected_match = match
+            break
+
+    if selected_match is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment is not a suitable backhaul match for this truck"
+        )
+
+    # -------------------------------------------------
+    # 6. Check duplicate assignment
+    # -------------------------------------------------
+
+    existing_assignment = db.query(Assignment).filter(
+        Assignment.truck_id == truck_id,
+        Assignment.load_id == load_id
+    ).first()
+
+    if existing_assignment:
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment is already assigned to this truck"
+        )
+
+    # -------------------------------------------------
+    # 7. Create assignment
+    # -------------------------------------------------
+
+    assignment = Assignment(
+        truck_id=truck_id,
+        load_id=load_id,
+        match_score=selected_match["match_score"],
+        estimated_distance=selected_match["distance_to_pickup_km"],
+        estimated_cost=selected_match["estimated_pickup_cost"],
+        estimated_profit=selected_match["estimated_net_revenue"],
+        waiting_time=0,
+        recommendation=selected_match["recommendation"],
+        created_at=datetime.utcnow()
+    )
+
+    db.add(assignment)
+
+    # Generate assignment_id before creating history
+    db.flush()
+
+    # -------------------------------------------------
+    # 8. Record assignment history
+    # -------------------------------------------------
+
+    assignment_history = AssignmentHistory(
+        assignment_id=assignment.assignment_id,
+        status="assigned",
+        changed_at=datetime.utcnow()
+    )
+
+    db.add(assignment_history)
+
+    # -------------------------------------------------
+    # 9. Update shipment and truck status
+    # -------------------------------------------------
+
+    truck.current_load = shipment.weight
+    truck.status = "assigned"
+    truck.destination = shipment.destination_city
+
+    shipment.status = "assigned"
+
+    # -------------------------------------------------
+    # 10. Commit
+    # -------------------------------------------------
+
+    db.commit()
+    db.refresh(assignment)
+
+    # -------------------------------------------------
+    # 11. Return assignment details
+    # -------------------------------------------------
+
+    return {
+        "message": "Shipment assigned successfully",
+
+        "assignment": {
+            "assignment_id": assignment.assignment_id,
+            "truck_id": assignment.truck_id,
+            "load_id": assignment.load_id,
+            "match_score": assignment.match_score,
+            "estimated_distance": assignment.estimated_distance,
+            "estimated_cost": assignment.estimated_cost,
+            "estimated_profit": assignment.estimated_profit,
+            "waiting_time": assignment.waiting_time,
+            "recommendation": assignment.recommendation,
+            "created_at": assignment.created_at
+        }
+    }
+
+@router.get("/")
+def get_assignments(
+    db: Session = Depends(get_db)
+):
+    assignments = db.query(Assignment).all()
+
+    return assignments
+
+
+@router.get("/{assignment_id}/history")
+def get_assignment_history(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    # -------------------------------------------------
+    # 1. Check assignment
+    # -------------------------------------------------
+
+    assignment = db.query(Assignment).filter(
+        Assignment.assignment_id == assignment_id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found"
+        )
+
+    # -------------------------------------------------
+    # 2. Get assignment history
+    # -------------------------------------------------
+
+    history = db.query(AssignmentHistory).filter(
+        AssignmentHistory.assignment_id == assignment_id
+    ).order_by(
+        AssignmentHistory.changed_at.asc()
+    ).all()
+
+    # -------------------------------------------------
+    # 3. Return history
+    # -------------------------------------------------
+
+    return {
+        "assignment_id": assignment_id,
+        "history": [
+            {
+                "history_id": item.history_id,
+                "status": item.status,
+                "changed_at": item.changed_at
+            }
+            for item in history
+        ]
+    }
+
+
+@router.get("/{assignment_id}/details")
+def get_assignment_details(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    assignment = db.query(Assignment).filter(
+        Assignment.assignment_id == assignment_id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found"
+        )
+
+    truck = db.query(Truck).filter(
+        Truck.truck_id == assignment.truck_id
+    ).first()
+
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == assignment.load_id
+    ).first()
+
+    return {
+        "assignment": {
+            "assignment_id": assignment.assignment_id,
+            "truck_id": assignment.truck_id,
+            "load_id": assignment.load_id,
+            "match_score": assignment.match_score,
+            "estimated_distance": assignment.estimated_distance,
+            "estimated_cost": assignment.estimated_cost,
+            "estimated_profit": assignment.estimated_profit,
+            "waiting_time": assignment.waiting_time,
+            "recommendation": assignment.recommendation,
+            "status": assignment.status,
+            "created_at": assignment.created_at
+        },
+
+        "truck": {
+            "truck_id": truck.truck_id,
+            "truck_type": truck.truck_type,
+            "capacity": truck.capacity,
+            "current_load": truck.current_load,
+            "status": truck.status,
+            "destination": truck.destination
+        },
+
+        "shipment": {
+            "load_id": shipment.load_id,
+            "pickup_city": shipment.pickup_city,
+            "destination_city": shipment.destination_city,
+            "weight": shipment.weight,
+            "cargo_type": shipment.cargo_type,
+            "revenue": shipment.revenue,
+            "status": shipment.status
+        }
+    }
+
+@router.get("/{assignment_id}")
+def get_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    assignment = db.query(Assignment).filter(
+        Assignment.assignment_id == assignment_id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found"
+        )
+
+    return assignment
+
+
+@router.put("/{assignment_id}/start")
+def start_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    # 1. Find assignment
+    assignment = db.query(Assignment).filter(
+        Assignment.assignment_id == assignment_id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found"
+        )
+
+    # 2. Validate assignment status
+    if assignment.status == "in_transit":
+        raise HTTPException(
+            status_code=400,
+            detail="Assignment is already in transit"
+        )
+
+    if assignment.status == "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Completed assignment cannot be started"
+        )
+
+    if assignment.status == "cancelled":
+        raise HTTPException(
+            status_code=400,
+            detail="Cancelled assignment cannot be started"
+        )
+
+    if assignment.status != "assigned":
+        raise HTTPException(
+            status_code=400,
+            detail="Only assigned assignments can be started"
+        )
+
+    # 3. Find truck
+    truck = db.query(Truck).filter(
+        Truck.truck_id == assignment.truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    # 4. Find shipment
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == assignment.load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    # 5. Validate shipment status
+    if shipment.status != "assigned":
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment must be assigned before starting"
+        )
+
+    # 6. Validate truck status
+    if truck.status != "assigned":
+        raise HTTPException(
+            status_code=400,
+            detail="Truck must be assigned before starting"
+        )
+
+    # 7. Start assignment
+    assignment.status = "in_transit"
+
+    # 8. Update truck state
+    truck.status = "in_transit"
+    truck.current_load = shipment.weight
+    truck.destination = shipment.destination_city
+
+    # 9. Update shipment state
+    shipment.status = "in_transit"
+
+    # 10. Record truck location
+    if (
+    truck.current_latitude is not None
+    and truck.current_longitude is not None
+    ):
+        location = TruckLocation(
+            truck_id=truck.truck_id,
+            timestamp=datetime.utcnow(),
+            latitude=truck.current_latitude,
+            longitude=truck.current_longitude,
+            speed=None
+        )
+        db.add(location)
+
+
+    # -------------------------------------------------
+    # 11. Record assignment history
+    # -------------------------------------------------
+
+    assignment_history = AssignmentHistory(
+        assignment_id=assignment.assignment_id,
+        status="in_transit",
+        changed_at=datetime.utcnow()
+    )
+
+    db.add(assignment_history)
+       
+    # 12. Commit changes
+    db.commit()
+
+    db.refresh(assignment)
+    db.refresh(truck)
+    db.refresh(shipment)
+
+    # 13. Return updated state
+    return {
+        "message": "Assignment started successfully",
+
+        "assignment": {
+            "assignment_id": assignment.assignment_id,
+            "truck_id": assignment.truck_id,
+            "load_id": assignment.load_id,
+            "status": assignment.status
+        },
+
+        "truck": {
+            "truck_id": truck.truck_id,
+            "current_load": truck.current_load,
+            "status": truck.status,
+            "destination": truck.destination
+        },
+
+        "shipment": {
+            "load_id": shipment.load_id,
+            "status": shipment.status
+        }
+    }
+
+
+@router.put("/{assignment_id}/complete")
+def complete_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    # -------------------------------------------------
+    # 1. Find assignment
+    # -------------------------------------------------
+
+    assignment = db.query(Assignment).filter(
+        Assignment.assignment_id == assignment_id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found"
+        )
+
+    # -------------------------------------------------
+    # 2. Validate assignment status
+    # -------------------------------------------------
+
+    if assignment.status == "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Assignment is already completed"
+        )
+
+    if assignment.status == "cancelled":
+        raise HTTPException(
+            status_code=400,
+            detail="Cancelled assignment cannot be completed"
+        )
+
+    if assignment.status != "in_transit":
+        raise HTTPException(
+            status_code=400,
+            detail="Assignment must be in transit before completion"
+        )
+
+    # -------------------------------------------------
+    # 3. Find truck
+    # -------------------------------------------------
+
+    truck = db.query(Truck).filter(
+        Truck.truck_id == assignment.truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    # -------------------------------------------------
+    # 4. Find shipment
+    # -------------------------------------------------
+
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == assignment.load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    # -------------------------------------------------
+    # 5. Complete assignment
+    # -------------------------------------------------
+
+    assignment.status = "completed"
+
+    # -------------------------------------------------
+    # 6. Complete shipment
+    # -------------------------------------------------
+
+    shipment.status = "delivered"
+
+    # -------------------------------------------------
+    # 7. Make truck available
+    # -------------------------------------------------
+
+    truck.current_load = 0
+    truck.status = "available"
+    truck.destination = None
+
+    # -------------------------------------------------
+    # 8. Record assignment history
+    # -------------------------------------------------
+
+    assignment_history = AssignmentHistory(
+        assignment_id=assignment.assignment_id,
+        status="completed",
+        changed_at=datetime.utcnow()
+    )
+
+    db.add(assignment_history)
+
+    # -------------------------------------------------
+    # 9. Commit completed assignment state
+    # -------------------------------------------------
+
+    db.commit()
+
+    db.refresh(assignment)
+    db.refresh(truck)
+    db.refresh(shipment)
+
+    # -------------------------------------------------
+    # 10. Re-optimize fleet after completion
+    # -------------------------------------------------
+
+    reoptimization = reoptimize_fleet(db)
+
+    # -------------------------------------------------
+    # 11. Automatically execute new recommendations
+    # -------------------------------------------------
+
+    optimization_data = reoptimization.get(
+        "optimization",
+        {}
+    )
+
+    recommendations = optimization_data.get(
+        "assignments",
+        []
+    )
+
+    if recommendations:
+        automatic_execution = execute_fleet_assignments(
+            db,
+            recommendations
+        )
+    else:
+        automatic_execution = {
+            "message": "No new fleet assignments to execute",
+            "total_requested": 0,
+            "total_executed": 0,
+            "total_rejected": 0,
+            "executed_assignments": [],
+            "rejected_assignments": []
+        }
+
+    # -------------------------------------------------
+    # 12. Refresh state after automatic assignment
+    # -------------------------------------------------
+
+    db.refresh(assignment)
+    db.refresh(truck)
+    db.refresh(shipment)
+
+    # -------------------------------------------------
+    # 13. Return completion + reoptimization + execution
+    # -------------------------------------------------
+
+    return {
+        "message": "Assignment completed successfully",
+
+        "assignment": {
+        "assignment_id": assignment.assignment_id,
+        "truck_id": assignment.truck_id,
+        "load_id": assignment.load_id,
+        "status": assignment.status
+        },
+
+        "truck": {
+        "truck_id": truck.truck_id,
+        "current_load": truck.current_load,
+        "status": truck.status,
+        "destination": truck.destination
+        },
+
+        "shipment": {
+        "load_id": shipment.load_id,
+        "status": shipment.status
+        },
+
+        "reoptimization": reoptimization,
+
+        "automatic_execution": automatic_execution
+    }
+
+@router.get("/{assignment_id}/arrival")
+def check_assignment_arrival(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    # -------------------------------------------------
+    # 1. Detect arrival
+    # -------------------------------------------------
+
+    arrival_result = detect_arrival(
+        db,
+        assignment_id
+    )
+
+    # -------------------------------------------------
+    # 2. If truck has not arrived
+    # -------------------------------------------------
+
+    if not arrival_result.get("arrived", False):
+        return arrival_result
+
+    # -------------------------------------------------
+    # 3. Automatically complete assignment
+    # -------------------------------------------------
+
+    completion_result = complete_assignment(
+        assignment_id,
+        db
+    )
+
+    # -------------------------------------------------
+    # 4. Return arrival + completion result
+    # -------------------------------------------------
+
+    return {
+        "message": "Truck arrived and assignment completed automatically",
+        "arrival": arrival_result,
+        "completion": completion_result
+    }  
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\backhaul.py =====
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+
+from backend.models.truck import Truck
+from backend.models.shipment import Shipment
+
+from backend.services.backhaul_matching import find_backhaul_matches
+
+from backend.services.best_backhaul import (
+    select_best_backhaul
+)
+
+from backend.services.assignment_decision import (
+    generate_assignment_decision
+)
+
+from backend.services.automatic_assignment import (
+    execute_best_assignment
+)
+
+from backend.services.fleet_optimizer import optimize_fleet
+
+from backend.services.fleet_assignment_executor import execute_fleet_assignments
+
+from backend.services.reoptimization import reoptimize_fleet
+
+from backend.services.baseline_vs_ai import compare_baseline_vs_ai
+
+
+
+from backend.services.route_optimizer import (
+    calculate_route_distances,
+    calculate_route_efficiency
+)
+
+router = APIRouter(
+    prefix="/backhaul",
+    tags=["Backhaul Matching"]
+)
+
+
+@router.get("/match/{truck_id}")
+def get_backhaul_matches(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    result = find_backhaul_matches(
+        truck_id,
+        db
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    return result
+
+@router.get("/route/{truck_id}/{load_id}")
+def optimize_route(
+    truck_id: int,
+    load_id: int,
+    db: Session = Depends(get_db)
+):
+    # -------------------------------------------------
+    # 1. Find truck
+    # -------------------------------------------------
+
+    truck = db.query(Truck).filter(
+        Truck.truck_id == truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    # -------------------------------------------------
+    # 2. Find shipment
+    # -------------------------------------------------
+
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    # -------------------------------------------------
+    # 3. Validate truck coordinates
+    # -------------------------------------------------
+
+    if (
+        truck.current_latitude is None
+        or truck.current_longitude is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Truck location is not available"
+        )
+
+    # -------------------------------------------------
+    # 4. Validate shipment pickup coordinates
+    # -------------------------------------------------
+
+    if (
+        shipment.pickup_latitude is None
+        or shipment.pickup_longitude is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment pickup location is not available"
+        )
+
+    # -------------------------------------------------
+    # 5. Validate shipment destination coordinates
+    # -------------------------------------------------
+
+    if (
+        shipment.destination_latitude is None
+        or shipment.destination_longitude is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment destination location is not available"
+        )
+
+    # -------------------------------------------------
+    # 6. Calculate route distances
+    # -------------------------------------------------
+
+    route = calculate_route_distances(
+        truck_latitude=truck.current_latitude,
+        truck_longitude=truck.current_longitude,
+        pickup_latitude=shipment.pickup_latitude,
+        pickup_longitude=shipment.pickup_longitude,
+        destination_latitude=shipment.destination_latitude,
+        destination_longitude=shipment.destination_longitude,
+        cost_per_km=truck.cost_per_km
+    )
+
+    # -------------------------------------------------
+    # 7. Calculate route efficiency
+    # -------------------------------------------------
+
+    efficiency = calculate_route_efficiency(
+        revenue=shipment.revenue,
+        total_distance_km=route["total_distance_km"],
+        estimated_cost=route["estimated_cost"]
+    )
+
+    # -------------------------------------------------
+    # 8. Return optimization result
+    # -------------------------------------------------
+
+    return {
+        "truck": {
+            "truck_id": truck.truck_id,
+            "current_city": truck.current_city,
+            "current_latitude": truck.current_latitude,
+            "current_longitude": truck.current_longitude,
+            "cost_per_km": truck.cost_per_km
+        },
+
+        "shipment": {
+            "load_id": shipment.load_id,
+            "pickup_city": shipment.pickup_city,
+            "destination_city": shipment.destination_city,
+            "revenue": shipment.revenue
+        },
+
+        "route": route,
+
+        "efficiency": efficiency
+    }
+
+@router.get("/best/{truck_id}")
+def get_best_backhaul(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    result = select_best_backhaul(
+        truck_id,
+        db
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    return result
+
+@router.get("/decision/{truck_id}")
+def get_assignment_decision(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    result = generate_assignment_decision(
+        truck_id,
+        db
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    return result
+
+@router.post("/auto-assign/{truck_id}")
+def auto_assign_best_backhaul(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    return execute_best_assignment(
+        truck_id,
+        db
+    )
+
+@router.get("/fleet-optimize")
+def fleet_optimization(
+    db: Session = Depends(get_db)
+):
+    return optimize_fleet(db)
+
+@router.post("/fleet-execute")
+def fleet_execute(
+    db: Session = Depends(get_db)
+):
+    optimization = optimize_fleet(db)
+
+    recommendations = optimization.get(
+        "assignments",
+        []
+    )
+
+    if not recommendations:
+        return {
+            "message": "No fleet assignments available for execution",
+            "total_requested": 0,
+            "total_executed": 0,
+            "total_rejected": 0,
+            "executed_assignments": [],
+            "rejected_assignments": []
+        }
+
+    return execute_fleet_assignments(
+        db,
+        recommendations
+    )
+
+@router.get("/fleet-reoptimize")
+def fleet_reoptimize(db: Session = Depends(get_db)):
+    return reoptimize_fleet(db)
+
+@router.get("/baseline-vs-ai/{truck_id}")
+def baseline_vs_ai_comparison(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    result = compare_baseline_vs_ai(
+        truck_id,
+        db
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    if result.get("message") == "Truck not found":
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    return result
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\demand_prediction.py =====
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+from backend.models.prediction import Prediction
+from backend.schemas.demand_prediction import (
+    DemandPredictionRequest,
+    DemandPredictionResponse
+)
+from backend.services.demand_prediction import predict_demand
+
+
+router = APIRouter(
+    prefix="/demand",
+    tags=["Demand Prediction"]
+)
+
+
+@router.post(
+    "/predict",
+    response_model=DemandPredictionResponse
+)
+def predict_demand_api(
+    request: DemandPredictionRequest,
+    db: Session = Depends(get_db)
+):
+    result = predict_demand(
+        city=request.city,
+        hour=request.hour,
+        day_of_week=request.day_of_week,
+        available_loads=request.available_loads,
+        completed_loads=request.completed_loads
+    )
+
+    prediction = Prediction(
+        truck_id=request.truck_id,
+        location=request.city,
+        predicted_demand=result["predicted_demand"],
+        predicted_waiting_time=0.0
+    )
+
+    db.add(prediction)
+    db.commit()
+    db.refresh(prediction)
+
+    return result
+
+@router.get("/history")
+def get_prediction_history(
+    db: Session = Depends(get_db)
+):
+    predictions = (
+        db.query(Prediction)
+        .order_by(Prediction.prediction_time.desc())
+        .all()
+    )
+
+    return [
+        {
+            "prediction_id": prediction.prediction_id,
+            "truck_id": prediction.truck_id,
+            "location": prediction.location,
+            "predicted_demand": prediction.predicted_demand,
+            "predicted_waiting_time": prediction.predicted_waiting_time,
+            "prediction_time": prediction.prediction_time
+        }
+        for prediction in predictions
+    ]
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\shipments.py =====
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+from backend.models.shipment import Shipment
+from backend.schemas.shipment import ShipmentCreate, ShipmentResponse
+
+
+router = APIRouter(
+    prefix="/shipments",
+    tags=["Shipments"]
+)
+
+
+@router.post("/", response_model=ShipmentResponse)
+def create_shipment(
+    shipment_data: ShipmentCreate,
+    db: Session = Depends(get_db)
+):
+    shipment = Shipment(**shipment_data.model_dump())
+
+    db.add(shipment)
+    db.commit()
+    db.refresh(shipment)
+
+    return shipment
+
+
+@router.get("/", response_model=list[ShipmentResponse])
+def get_shipments(
+    db: Session = Depends(get_db)
+):
+    return db.query(Shipment).all()
+
+
+@router.get("/{load_id}", response_model=ShipmentResponse)
+def get_shipment(
+    load_id: int,
+    db: Session = Depends(get_db)
+):
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    return shipment
+
+
+@router.put("/{load_id}", response_model=ShipmentResponse)
+def update_shipment(
+    load_id: int,
+    shipment_data: ShipmentCreate,
+    db: Session = Depends(get_db)
+):
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    for key, value in shipment_data.model_dump().items():
+        setattr(shipment, key, value)
+
+    db.commit()
+    db.refresh(shipment)
+
+    return shipment
+
+
+@router.delete(
+    "/{load_id}",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
+def delete_shipment(
+    load_id: int,
+    db: Session = Depends(get_db)
+):
+    shipment = db.query(Shipment).filter(
+        Shipment.load_id == load_id
+    ).first()
+
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found"
+        )
+
+    db.delete(shipment)
+    db.commit()
+
+    return {
+        "message": "Shipment deleted successfully",
+        "load_id": load_id
+    }
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\trucks.py =====
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+from backend.api.deps import require_role
+from backend.models.truck import Truck
+from backend.models.truck_location import TruckLocation
+from backend.schemas.truck import TruckCreate, TruckResponse
+
+
+router = APIRouter(
+    prefix="/trucks",
+    tags=["Trucks"]
+)
+
+
+@router.post("/", response_model=TruckResponse)
+def create_truck(
+    truck_data: TruckCreate,
+    db: Session = Depends(get_db)
+):
+    truck = Truck(**truck_data.model_dump())
+
+    db.add(truck)
+    db.flush()
+
+    if (
+        truck.current_latitude is not None
+        and truck.current_longitude is not None
+    ):
+        db.add(
+            TruckLocation(
+                truck_id=truck.truck_id,
+                timestamp=datetime.now(),
+                latitude=truck.current_latitude,
+                longitude=truck.current_longitude,
+                speed=0
+            )
+        )
+
+    db.commit()
+    db.refresh(truck)
+
+    return truck
+
+
+@router.get("/", response_model=list[TruckResponse])
+def get_trucks(
+    db: Session = Depends(get_db)
+):
+    return db.query(Truck).all()
+
+
+@router.get("/{truck_id}", response_model=TruckResponse)
+def get_truck(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    truck = db.query(Truck).filter(
+        Truck.truck_id == truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    return truck
+
+
+@router.put("/{truck_id}", response_model=TruckResponse)
+def update_truck(
+    truck_id: int,
+    truck_data: TruckCreate,
+    db: Session = Depends(get_db)
+):
+    truck = db.query(Truck).filter(
+        Truck.truck_id == truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    for key, value in truck_data.model_dump().items():
+        setattr(truck, key, value)
+
+    db.commit()
+    db.refresh(truck)
+
+    return truck
+
+
+@router.delete(
+    "/{truck_id}",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
+def delete_truck(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    truck = db.query(Truck).filter(
+        Truck.truck_id == truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    db.delete(truck)
+    db.commit()
+
+    return {
+        "message": "Truck deleted successfully",
+        "truck_id": truck_id
+    }
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\truck_locations.py =====
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+from backend.api.deps import require_role
+from backend.models.truck_location import TruckLocation
+from backend.models.truck import Truck
+from backend.schemas.truck_location import (
+    TruckLocationCreate,
+    TruckLocationResponse
+)
+
+
+router = APIRouter(
+    prefix="/locations",
+    tags=["Truck Locations"]
+)
+
+
+@router.post("/", response_model=TruckLocationResponse)
+def create_location(
+    location_data: TruckLocationCreate,
+    db: Session = Depends(get_db)
+):
+    import math
+
+    # -------------------------------------------------
+    # 1. Validate latitude
+    # -------------------------------------------------
+
+    if not math.isfinite(location_data.latitude):
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude must be a finite number"
+        )
+
+    if not -90 <= location_data.latitude <= 90:
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude must be between -90 and 90"
+        )
+
+    # -------------------------------------------------
+    # 2. Validate longitude
+    # -------------------------------------------------
+
+    if not math.isfinite(location_data.longitude):
+        raise HTTPException(
+            status_code=400,
+            detail="Longitude must be a finite number"
+        )
+
+    if not -180 <= location_data.longitude <= 180:
+        raise HTTPException(
+            status_code=400,
+            detail="Longitude must be between -180 and 180"
+        )
+
+    # -------------------------------------------------
+    # 3. Validate truck
+    # -------------------------------------------------
+
+    truck = db.query(Truck).filter(
+        Truck.truck_id == location_data.truck_id
+    ).first()
+
+    if not truck:
+        raise HTTPException(
+            status_code=404,
+            detail="Truck not found"
+        )
+
+    # -------------------------------------------------
+    # 4. Create GPS location
+    # -------------------------------------------------
+
+    location = TruckLocation(
+        **location_data.model_dump()
+    )
+
+    db.add(location)
+
+    # Synchronize latest GPS position with Truck table
+    truck.current_latitude = location_data.latitude
+    truck.current_longitude = location_data.longitude
+
+    db.commit()
+    db.refresh(location)
+
+    return location
+
+@router.get("/", response_model=list[TruckLocationResponse])
+def get_locations(
+    db: Session = Depends(get_db)
+):
+    return db.query(TruckLocation).all()
+
+@router.get("/truck/{truck_id}/latest", response_model=TruckLocationResponse)
+def get_latest_truck_location(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    return db.query(TruckLocation).filter(
+        TruckLocation.truck_id == truck_id
+    ).order_by(
+        TruckLocation.timestamp.desc()
+    ).first()
+
+
+@router.get("/truck/{truck_id}", response_model=list[TruckLocationResponse])
+def get_truck_locations(
+    truck_id: int,
+    db: Session = Depends(get_db)
+):
+    return db.query(TruckLocation).filter(
+        TruckLocation.truck_id == truck_id
+    ).all() 
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\waiting_time_prediction.py =====
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from backend.database.connection import get_db
+from backend.models.prediction import Prediction
+from backend.schemas.waiting_time_prediction import (
+    WaitingTimePredictionRequest,
+    WaitingTimePredictionResponse
+)
+from backend.services.waiting_time_prediction import (
+    predict_waiting_time
+)
+
+
+router = APIRouter(
+    prefix="/waiting-time",
+    tags=["Waiting Time Prediction"]
+)
+
+
+@router.post(
+    "/predict",
+    response_model=WaitingTimePredictionResponse
+)
+def predict_waiting_time_api(
+    request: WaitingTimePredictionRequest,
+    db: Session = Depends(get_db)
+):
+    result = predict_waiting_time(
+        city=request.city,
+        hour=request.hour,
+        day_of_week=request.day_of_week,
+        available_loads=request.available_loads,
+        completed_loads=request.completed_loads,
+        average_demand=request.average_demand
+    )
+
+    prediction = Prediction(
+        truck_id=request.truck_id,
+        location=request.city,
+        predicted_demand=request.average_demand,
+        predicted_waiting_time=result["predicted_waiting_time"]
+    )
+
+    db.add(prediction)
+    db.commit()
+    db.refresh(prediction)
+
+    return result
+
+@router.get("/history")
+def get_waiting_prediction_history(
+    db: Session = Depends(get_db)
+):
+    predictions = (
+        db.query(Prediction)
+        .filter(Prediction.predicted_waiting_time > 0)
+        .order_by(Prediction.prediction_time.desc())
+        .all()
+    )
+
+    return [
+        {
+            "prediction_id": prediction.prediction_id,
+            "truck_id": prediction.truck_id,
+            "location": prediction.location,
+            "predicted_demand": prediction.predicted_demand,
+            "predicted_waiting_time": prediction.predicted_waiting_time,
+            "prediction_time": prediction.prediction_time
+        }
+        for prediction in predictions
+    ]
+===== C:\Projects\AI-FLEET-OPTIMIZER\backend\api\__init__.py =====

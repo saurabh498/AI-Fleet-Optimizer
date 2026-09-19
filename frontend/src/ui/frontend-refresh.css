@@ -1,0 +1,301 @@
+﻿/* ============================================================
+   Frontend refresh — styles for SHAP, CO2, cost breakdown,
+   environmental KPI sections.
+   ============================================================ */
+
+/* -------- Environmental section wrapper -------- */
+
+.environmental-section {
+  border-left: 3px solid #10b981;
+  padding-left: 1.25rem;
+}
+
+/* -------- SHAP explanation panel -------- */
+
+.shap-explanation {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.shap-summary {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #1e293b;
+}
+
+.shap-baseline {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed rgba(100, 116, 139, 0.25);
+}
+
+.shap-drivers {
+  margin-top: 0.75rem;
+}
+
+.shap-drivers-title {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 0.4rem;
+}
+
+.shap-driver {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.shap-driver.positive {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.shap-driver.negative {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.shap-feature {
+  font-weight: 500;
+  color: #334155;
+}
+
+.shap-value {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.shap-impact {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.shap-driver.positive .shap-impact {
+  color: #059669;
+}
+
+.shap-driver.negative .shap-impact {
+  color: #dc2626;
+}
+
+/* -------- CO2 impact panel -------- */
+
+.co2-impact {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* -------- Cost breakdown panel -------- */
+
+.cost-breakdown {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.cost-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(245, 158, 11, 0.35);
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.cost-total strong {
+  font-size: 1rem;
+  color: #92400e;
+}
+
+/* -------- Cost breakdown bar (Analytics) -------- */
+
+.cost-breakdown-bar {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.cost-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.cost-breakdown-row strong {
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.cost-breakdown-row.muted {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.match-subnote {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.analytics-empty-hint {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.1);
+  border-left: 3px solid #94a3b8;
+  color: #475569;
+}
+
+.analytics-empty-hint strong {
+  display: block;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.analytics-empty-hint p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+/* ============================================================
+   Login: demo credential chips
+   ============================================================ */
+
+.login-demo-creds {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.login-demo-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin: 0 0 0.5rem;
+}
+
+.login-demo-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.demo-chip {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.06);
+  color: #4f46e5;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.demo-chip:hover {
+  background: rgba(99, 102, 241, 0.14);
+}
+
+/* ============================================================
+   Navbar: user identity chip
+   ============================================================ */
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  margin-right: 0.5rem;
+}
+
+.navbar-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #4f46e5;
+  font-weight: 600;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+}
+
+.navbar-user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.navbar-user-info strong {
+  font-size: 0.8rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.navbar-user-info span {
+  font-size: 0.68rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ============================================================
+   AI Recommendation: action buttons
+   ============================================================ */
+
+.ai-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.assign-now-button {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+}
+
+.ai-action-error {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  font-size: 0.85rem;
+}

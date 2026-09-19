@@ -1,0 +1,78 @@
+{
+  "trucks_evaluated": 0,
+  "candidates_considered": 0,
+  "results": {
+    "nearest": {
+      "metrics": {
+        "trucks_assigned": 0,
+        "total_distance_km": 0.0,
+        "total_cost_inr": 0.0,
+        "total_revenue_inr": 0.0,
+        "total_profit_inr": 0.0,
+        "total_co2_kg": 0.0,
+        "avg_route_efficiency": 0.0,
+        "avg_match_score": 0.0
+      },
+      "assignments": []
+    },
+    "greedy_profit": {
+      "metrics": {
+        "trucks_assigned": 0,
+        "total_distance_km": 0.0,
+        "total_cost_inr": 0.0,
+        "total_revenue_inr": 0.0,
+        "total_profit_inr": 0.0,
+        "total_co2_kg": 0.0,
+        "avg_route_efficiency": 0.0,
+        "avg_match_score": 0.0
+      },
+      "assignments": []
+    },
+    "ortools_rules": {
+      "metrics": {
+        "trucks_assigned": 0,
+        "total_distance_km": 0.0,
+        "total_cost_inr": 0.0,
+        "total_revenue_inr": 0.0,
+        "total_profit_inr": 0.0,
+        "total_co2_kg": 0.0,
+        "avg_route_efficiency": 0.0,
+        "avg_match_score": 0.0
+      },
+      "assignments": []
+    },
+    "ai": {
+      "metrics": {
+        "trucks_assigned": 0,
+        "total_distance_km": 0.0,
+        "total_cost_inr": 0.0,
+        "total_revenue_inr": 0.0,
+        "total_profit_inr": 0.0,
+        "total_co2_kg": 0.0,
+        "avg_route_efficiency": 0.0,
+        "avg_match_score": 0.0
+      },
+      "assignments": []
+    }
+  },
+  "improvements": {
+    "vs_nearest": {
+      "distance_reduction_pct": 0.0,
+      "cost_reduction_pct": 0.0,
+      "co2_reduction_pct": 0.0,
+      "profit_change_pct": 0.0
+    },
+    "vs_greedy_profit": {
+      "distance_reduction_pct": 0.0,
+      "cost_reduction_pct": 0.0,
+      "co2_reduction_pct": 0.0,
+      "profit_change_pct": 0.0
+    },
+    "vs_ortools_rules": {
+      "distance_reduction_pct": 0.0,
+      "cost_reduction_pct": 0.0,
+      "co2_reduction_pct": 0.0,
+      "profit_change_pct": 0.0
+    }
+  }
+}

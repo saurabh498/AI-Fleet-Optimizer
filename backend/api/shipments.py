@@ -2,17 +2,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
+from backend.api.deps import get_current_user, require_role
 from backend.models.shipment import Shipment
 from backend.schemas.shipment import ShipmentCreate, ShipmentResponse
 
 
 router = APIRouter(
     prefix="/shipments",
-    tags=["Shipments"]
+    tags=["Shipments"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
-@router.post("/", response_model=ShipmentResponse)
+@router.post(
+    "/",
+    response_model=ShipmentResponse,
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def create_shipment(
     shipment_data: ShipmentCreate,
     db: Session = Depends(get_db)
@@ -51,7 +57,11 @@ def get_shipment(
     return shipment
 
 
-@router.put("/{load_id}", response_model=ShipmentResponse)
+@router.put(
+    "/{load_id}",
+    response_model=ShipmentResponse,
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def update_shipment(
     load_id: int,
     shipment_data: ShipmentCreate,
@@ -76,7 +86,10 @@ def update_shipment(
     return shipment
 
 
-@router.delete("/{load_id}")
+@router.delete(
+    "/{load_id}",
+    dependencies=[Depends(require_role("manager", "admin"))],
+)
 def delete_shipment(
     load_id: int,
     db: Session = Depends(get_db)

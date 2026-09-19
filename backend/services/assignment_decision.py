@@ -2,6 +2,34 @@ from backend.services.best_backhaul import select_best_backhaul
 from backend.services.ml_decision_context import build_ml_decision_context
 
 
+# -------------------------------------------------
+# SHAP helper
+# -------------------------------------------------
+
+def _shap_from_context(ml_context: dict) -> dict:
+    """
+    Extract the SHAP explanation from an ML decision
+    context. Returns a safe fallback when SHAP is
+    unavailable.
+    """
+    if not ml_context or not ml_context.get("available"):
+        return {
+            "summary": "SHAP explanation unavailable — no ML context",
+            "top_drivers": [],
+            "top_negative": [],
+        }
+
+    shap_data = ml_context.get("shap_explanation", {})
+
+    return {
+        "summary": shap_data.get("summary", "N/A"),
+        "predicted_value": shap_data.get("predicted_value"),
+        "base_value": shap_data.get("base_value"),
+        "top_drivers": shap_data.get("top_positive", [])[:3],
+        "top_negative": shap_data.get("top_negative", [])[:3],
+    }
+
+
 def calculate_ml_adjustment(
     predicted_demand: float,
     predicted_waiting_time: float
@@ -58,6 +86,7 @@ def calculate_ml_adjustment(
         )
 
     return adjustment
+
 
 def determine_no_match_action(
     predicted_demand: float,
@@ -215,6 +244,7 @@ def generate_ml_explanation(
         "reason": reason
     }
 
+
 def generate_assignment_decision(
     truck_id: int,
     db
@@ -262,10 +292,6 @@ def generate_assignment_decision(
     )
 
     # -------------------------------------------------
-    # No suitable backhaul shipment
-    # -------------------------------------------------
-
-        # -------------------------------------------------
     # No suitable backhaul shipment
     # -------------------------------------------------
 
@@ -346,7 +372,8 @@ def generate_assignment_decision(
             "ml_adjustment": 0.0,
             "base_score": 0.0,
             "ml_adjusted_score": 0.0,
-            "reason": ml_reason
+            "reason": ml_reason,
+            "shap": _shap_from_context(ml_context),
         }
 
         # -------------------------------------------------
@@ -426,12 +453,14 @@ def generate_assignment_decision(
     )
 
     ml_explanation = generate_ml_explanation(
-    predicted_demand=predicted_demand,
-    predicted_waiting_time=predicted_waiting_time,
-    ml_adjustment=ml_adjustment,
-    base_score=decision_score,
-    ml_adjusted_score=ml_adjusted_score
-)
+        predicted_demand=predicted_demand,
+        predicted_waiting_time=predicted_waiting_time,
+        ml_adjustment=ml_adjustment,
+        base_score=decision_score,
+        ml_adjusted_score=ml_adjusted_score,
+    )
+
+    ml_explanation["shap"] = _shap_from_context(ml_context)
 
     # -------------------------------------------------
     # Final decision

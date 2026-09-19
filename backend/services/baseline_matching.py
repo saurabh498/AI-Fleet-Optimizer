@@ -2,7 +2,7 @@ from backend.models.truck import Truck
 from backend.models.shipment import Shipment
 from backend.models.truck_location import TruckLocation
 
-from backend.services.backhaul_matching import calculate_distance
+from backend.services.routing import get_route_km
 
 
 def find_baseline_match(
@@ -54,12 +54,23 @@ def find_baseline_match(
         TruckLocation.timestamp.desc()
     ).first()
 
-    if not latest_location:
-        return {
-            "truck_id": truck_id,
-            "matched": False,
-            "message": "No location data available"
-        }
+    if latest_location is None:
+        if (
+            truck.current_latitude is None
+            or truck.current_longitude is None
+        ):
+            return {
+                "truck_id": truck_id,
+                "matched": False,
+                "message": "No location data available"
+            }
+
+        class _Coords:
+            pass
+
+        latest_location = _Coords()
+        latest_location.latitude = truck.current_latitude
+        latest_location.longitude = truck.current_longitude
 
     # -------------------------------------------------
     # 3. Calculate remaining capacity
@@ -104,11 +115,12 @@ def find_baseline_match(
             continue
 
         # Calculate pickup distance
-        distance_to_pickup = calculate_distance(
+        distance_to_pickup = get_route_km(
             latest_location.latitude,
             latest_location.longitude,
             shipment.pickup_latitude,
-            shipment.pickup_longitude
+            shipment.pickup_longitude,
+            db=db,
         )
 
         feasible_shipments.append({

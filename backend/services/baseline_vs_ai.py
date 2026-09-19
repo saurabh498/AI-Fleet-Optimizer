@@ -1,4 +1,4 @@
-from backend.models.truck import Truck
+﻿from backend.models.truck import Truck
 from backend.models.shipment import Shipment
 
 from backend.services.baseline_matching import find_baseline_match
@@ -9,7 +9,8 @@ from backend.services.route_optimizer import calculate_route_distances
 def evaluate_strategy(
     truck,
     shipment,
-    strategy
+    strategy,
+    db
 ):
     """
     Calculate common evaluation metrics for a selected shipment.
@@ -45,7 +46,8 @@ def evaluate_strategy(
         pickup_longitude=shipment.pickup_longitude,
         destination_latitude=shipment.destination_latitude,
         destination_longitude=shipment.destination_longitude,
-        cost_per_km=truck.cost_per_km
+        truck_type=truck.truck_type,
+        db=db,
     )
 
     total_distance = route["total_distance_km"]
@@ -70,30 +72,18 @@ def evaluate_strategy(
         "weight": shipment.weight,
         "revenue": revenue,
         "pickup_distance_km": round(
-            route["pickup_distance_km"],
-            2
+            route["pickup_distance_km"], 2
         ),
         "delivery_distance_km": round(
-            route["delivery_distance_km"],
-            2
+            route["delivery_distance_km"], 2
         ),
-        "total_distance_km": round(
-            total_distance,
-            2
-        ),
-        "estimated_cost": round(
-            estimated_cost,
-            2
-        ),
-        "estimated_profit": round(
-            estimated_profit,
-            2
-        ),
-        "capacity_utilization_percent": round(
-            utilization,
-            2
-        ),
-        "metrics_available": True
+        "total_distance_km": round(total_distance, 2),
+        "estimated_cost": round(estimated_cost, 2),
+        "estimated_profit": round(estimated_profit, 2),
+        "capacity_utilization_percent": round(utilization, 2),
+        "co2_kg": route.get("co2_kg"),
+        "cost_breakdown": route.get("cost_breakdown"),
+        "metrics_available": True,
     }
 
 
@@ -122,92 +112,47 @@ def compare_baseline_vs_ai(
             "message": "Truck not found"
         }
 
-    # -------------------------------------------------
-    # 1. Run baseline strategy
-    # -------------------------------------------------
+    # 1. Baseline
+    baseline_result = find_baseline_match(truck_id, db)
 
-    baseline_result = find_baseline_match(
-        truck_id,
-        db
-    )
+    # 2. AI
+    ai_result = select_best_backhaul(truck_id, db)
 
-    # -------------------------------------------------
-    # 2. Run AI strategy
-    # -------------------------------------------------
-
-    ai_result = select_best_backhaul(
-        truck_id,
-        db
-    )
-
-    # -------------------------------------------------
-    # 3. Get baseline shipment
-    # -------------------------------------------------
-
+    # 3. Baseline evaluation
     baseline_evaluation = None
 
     if baseline_result.get("matched"):
-
-        baseline_load_id = baseline_result[
-            "selected_load"
-        ]["load_id"]
-
-        baseline_shipment = db.query(
-            Shipment
-        ).filter(
+        baseline_load_id = baseline_result["selected_load"]["load_id"]
+        baseline_shipment = db.query(Shipment).filter(
             Shipment.load_id == baseline_load_id
         ).first()
 
         baseline_evaluation = evaluate_strategy(
-            truck,
-            baseline_shipment,
-            "BASELINE"
+            truck, baseline_shipment, "BASELINE", db
         )
 
-    # -------------------------------------------------
-    # 4. Get AI shipment
-    # -------------------------------------------------
-
+    # 4. AI evaluation
     ai_evaluation = None
 
-    if (
-        ai_result
-        and ai_result.get("best_match")
-    ):
-
-        ai_load_id = ai_result[
-            "best_match"
-        ]["load_id"]
-
-        ai_shipment = db.query(
-            Shipment
-        ).filter(
+    if ai_result and ai_result.get("best_match"):
+        ai_load_id = ai_result["best_match"]["load_id"]
+        ai_shipment = db.query(Shipment).filter(
             Shipment.load_id == ai_load_id
         ).first()
 
         ai_evaluation = evaluate_strategy(
-            truck,
-            ai_shipment,
-            "AI"
+            truck, ai_shipment, "AI", db
         )
 
-    # -------------------------------------------------
-    # 5. Compare results
-    # -------------------------------------------------
-
+    # 5. Compare
     comparison = {
         "same_truck_state": True,
-        "baseline_selected": (
-            baseline_evaluation is not None
-        ),
-        "ai_selected": (
-            ai_evaluation is not None
-        ),
-        "same_load_selected": False
+        "baseline_selected": baseline_evaluation is not None,
+        "ai_selected": ai_evaluation is not None,
+        "same_load_selected": False,
     }
 
     if baseline_evaluation and ai_evaluation:
-
         comparison["same_load_selected"] = (
             baseline_evaluation["load_id"]
             == ai_evaluation["load_id"]
@@ -216,95 +161,58 @@ def compare_baseline_vs_ai(
         comparison["distance_difference_km"] = round(
             baseline_evaluation["total_distance_km"]
             - ai_evaluation["total_distance_km"],
-            2
+            2,
         )
 
         comparison["cost_difference"] = round(
             baseline_evaluation["estimated_cost"]
             - ai_evaluation["estimated_cost"],
-            2
+            2,
         )
 
         comparison["profit_difference"] = round(
             ai_evaluation["estimated_profit"]
             - baseline_evaluation["estimated_profit"],
-            2
+            2,
         )
 
         comparison["revenue_difference"] = round(
             ai_evaluation["revenue"]
             - baseline_evaluation["revenue"],
-            2
+            2,
         )
 
         comparison["utilization_difference_percent"] = round(
-            ai_evaluation[
-                "capacity_utilization_percent"
-            ]
-            - baseline_evaluation[
-                "capacity_utilization_percent"
-            ],
-            2
+            ai_evaluation["capacity_utilization_percent"]
+            - baseline_evaluation["capacity_utilization_percent"],
+            2,
         )
 
-        # -------------------------------------------------
-        # Determine better strategy
-        # -------------------------------------------------
+        ai_profit = ai_evaluation["estimated_profit"]
+        baseline_profit = baseline_evaluation["estimated_profit"]
+        ai_distance = ai_evaluation["total_distance_km"]
+        baseline_distance = baseline_evaluation["total_distance_km"]
 
-        ai_profit = ai_evaluation[
-            "estimated_profit"
-        ]
-
-        baseline_profit = baseline_evaluation[
-            "estimated_profit"
-        ]
-
-        ai_distance = ai_evaluation[
-            "total_distance_km"
-        ]
-
-        baseline_distance = baseline_evaluation[
-            "total_distance_km"
-        ]
-
-        if (
-            ai_profit > baseline_profit
-            and ai_distance <= baseline_distance
-        ):
+        if ai_profit > baseline_profit and ai_distance <= baseline_distance:
             winner = "AI"
-
-        elif (
-            baseline_profit > ai_profit
-            and baseline_distance <= ai_distance
-        ):
+        elif baseline_profit > ai_profit and baseline_distance <= ai_distance:
             winner = "BASELINE"
-
         else:
             winner = "TRADE-OFF"
 
         comparison["winner"] = winner
-
     else:
-
         comparison["winner"] = "NO_COMPARISON"
-
-    # -------------------------------------------------
-    # 6. Final response
-    # -------------------------------------------------
 
     return {
         "truck_id": truck_id,
-
         "experiment": {
             "type": "Controlled Baseline vs AI",
             "database_modified": False,
             "same_truck_state": True,
-            "same_available_shipment_pool": True
+            "same_available_shipment_pool": True,
         },
-
         "baseline": baseline_evaluation,
-
         "ai": ai_evaluation,
-
-        "comparison": comparison
+        "comparison": comparison,
     }
