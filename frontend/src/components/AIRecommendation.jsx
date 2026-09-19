@@ -1,4 +1,16 @@
-﻿function AIRecommendation({ recommendation }) {
+﻿import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import RoleGate from "./RoleGate";
+import api from "../services/api";
+
+function AIRecommendation({ recommendation }) {
+  // Hooks must be called unconditionally, before any early return.
+
+  const navigate = useNavigate();
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState("");
+
   if (!recommendation) {
     return null;
   }
@@ -7,6 +19,36 @@
   const decisionClass = decision.toLowerCase();
 
   const bestMatch = recommendation.best_match;
+
+  const canAssign =
+    decision === "ASSIGN_NOW" || decision === "REVIEW";
+
+  const handleAssignNow = async () => {
+    if (!bestMatch) return;
+    setAssigning(true);
+    setAssignError("");
+
+    try {
+      const resp = await api.post(
+        `/assignments/truck/${recommendation.truck_id}/load/${bestMatch.load_id}`
+      );
+      const assignmentId = resp.data?.assignment?.assignment_id;
+
+      // Immediately start the trip so the truck moves
+      if (assignmentId) {
+        await api.put(`/assignments/${assignmentId}/start`);
+      }
+
+      navigate("/trucks");
+    } catch (err) {
+      const msg =
+        err.response?.data?.detail ||
+        "Failed to assign shipment.";
+      setAssignError(msg);
+    } finally {
+      setAssigning(false);
+    }
+  };
   const metrics = recommendation.decision_metrics;
   const mlExplanation = recommendation.ml_explanation;
   const mlContext = recommendation.ml_context;
@@ -259,6 +301,25 @@
             </div>
           )}
         </div>
+      )}
+
+      {/* Action buttons */}
+
+      {bestMatch && canAssign && (
+        <RoleGate allow={["manager", "admin"]}>
+          <div className="ai-actions">
+            {assignError && (
+              <div className="ai-action-error">{assignError}</div>
+            )}
+            <button
+              className="primary-button assign-now-button"
+              onClick={handleAssignNow}
+              disabled={assigning}
+            >
+              {assigning ? "Assigning..." : "Assign & Start Trip"}
+            </button>
+          </div>
+        </RoleGate>
       )}
 
     </div>

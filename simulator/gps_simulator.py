@@ -1,27 +1,24 @@
-"""
-Fleet-wide GPS simulator.
+﻿"""
+Fleet-wide GPS simulator with authentication.
 
-Unlike gps_simulator.py (which drives a single hardcoded
-TRUCK_ID through its route), this script discovers every
-assignment currently in "in_transit" status and simulates
-all of those trucks moving at the same time, each on its
-own thread.
+Logs in as the admin user at start, then drives every
+in_transit assignment through its route, sending GPS
+points and letting the backend auto-detect arrival.
 
-Each truck still goes through the same two stages as the
-single-truck simulator:
+Env vars (all optional):
+    SIM_BASE_URL    default http://127.0.0.1:8000
+    SIM_EMAIL       default admin@fleetops.in
+    SIM_PASSWORD    default admin123
+    SIM_STEPS       default 10
+    SIM_INTERVAL    default 2 (seconds)
 
-    1. Current position -> shipment pickup
-    2. Pickup -> shipment destination
-
-and still relies on the backend's own automatic arrival
-detection (GET /assignments/{id}/arrival) to complete the
-assignment and trigger fleet re-optimization - this script
-does not decide arrival itself, it only feeds GPS points.
-
-Usage:
-    python simulator/fleet_gps_simulator.py
+Usage (from repo root):
+    python -m simulator.gps_simulator
+or:
+    python simulator/gps_simulator.py
 """
 
+import os
 import threading
 import time
 from datetime import datetime
@@ -29,93 +26,105 @@ from datetime import datetime
 import requests
 
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.getenv("SIM_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+SIM_EMAIL = os.getenv("SIM_EMAIL", "admin@fleetops.in")
+SIM_PASSWORD = os.getenv("SIM_PASSWORD", "admin123")
 
-STEPS = 10
-INTERVAL_SECONDS = 2
+STEPS = int(os.getenv("SIM_STEPS", "10"))
+INTERVAL_SECONDS = float(os.getenv("SIM_INTERVAL", "2"))
 
-ACTIVE_STATUSES = ["assigned", "in_transit"]
+AUTH_HEADERS = {}
 
 
-def get_truck(truck_id):
+# -------------------------------------------------
+# Auth
+# -------------------------------------------------
+
+def login():
+    """Authenticate and store the bearer token globally."""
+    response = requests.post(
+        f"{BASE_URL}/auth/login",
+        json={"email": SIM_EMAIL, "password": SIM_PASSWORD},
+        timeout=10,
+    )
+    response.raise_for_status()
+    token = response.json()["access_token"]
+    AUTH_HEADERS["Authorization"] = f"Bearer {token}"
+    print(f"Authenticated as {SIM_EMAIL}")
+
+
+def _auth_get(path):
     response = requests.get(
-        f"{BASE_URL}/trucks/{truck_id}",
-        timeout=10
+        f"{BASE_URL}{path}",
+        headers=AUTH_HEADERS,
+        timeout=10,
     )
     response.raise_for_status()
     return response.json()
+
+
+def _auth_post(path, payload):
+    response = requests.post(
+        f"{BASE_URL}{path}",
+        json=payload,
+        headers=AUTH_HEADERS,
+        timeout=10,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+# -------------------------------------------------
+# Data fetchers
+# -------------------------------------------------
+
+def get_truck(truck_id):
+    return _auth_get(f"/trucks/{truck_id}")
 
 
 def get_shipment(load_id):
-    response = requests.get(
-        f"{BASE_URL}/shipments/{load_id}",
-        timeout=10
-    )
-    response.raise_for_status()
-    return response.json()
+    return _auth_get(f"/shipments/{load_id}")
 
 
 def get_all_assignments():
-    response = requests.get(
-        f"{BASE_URL}/assignments/",
-        timeout=10
-    )
-    response.raise_for_status()
-    return response.json()
+    return _auth_get("/assignments/")
 
 
 def get_in_transit_assignments():
-    """
-    Return every assignment currently in_transit.
-
-    Only in_transit assignments are eligible for GPS
-    simulation - "assigned" assignments haven't been
-    started yet (see assignments.py PUT /{id}/start).
-    """
-
-    assignments = get_all_assignments()
-
     return [
-        assignment
-        for assignment in assignments
-        if assignment.get("status") == "in_transit"
+        a for a in get_all_assignments()
+        if a.get("status") == "in_transit"
     ]
 
 
 def send_location(truck_id, latitude, longitude, speed):
-    payload = {
-        "truck_id": truck_id,
-        "timestamp": datetime.now().isoformat(),
-        "latitude": round(latitude, 6),
-        "longitude": round(longitude, 6),
-        "speed": speed
-    }
-
-    response = requests.post(
-        f"{BASE_URL}/locations/",
-        json=payload,
-        timeout=10
+    return _auth_post(
+        "/locations/",
+        {
+            "truck_id": truck_id,
+            "timestamp": datetime.now().isoformat(),
+            "latitude": round(latitude, 6),
+            "longitude": round(longitude, 6),
+            "speed": speed,
+        },
     )
-    response.raise_for_status()
-    return response.json()
 
 
 def check_arrival(assignment_id):
-    response = requests.get(
-        f"{BASE_URL}/assignments/{assignment_id}/arrival",
-        timeout=10
-    )
-    response.raise_for_status()
-    return response.json()
+    return _auth_get(f"/assignments/{assignment_id}/arrival")
 
+
+# -------------------------------------------------
+# Logging
+# -------------------------------------------------
 
 def log(truck_id, message):
-    """
-    Prefix every line with the truck id so parallel
-    output from multiple threads stays readable.
-    """
     print(f"[Truck {truck_id}] {message}")
 
+
+# -------------------------------------------------
+# Movement
+# -------------------------------------------------
 
 def move_truck_through_route(
     truck_id,
@@ -126,20 +135,10 @@ def move_truck_through_route(
     pickup_latitude,
     pickup_longitude,
     destination_latitude,
-    destination_longitude
+    destination_longitude,
 ):
-    """
-    Runs the same two-stage movement as the single-truck
-    simulator (current position -> pickup -> destination),
-    but scoped to one truck so it can run inside a thread.
-    """
-
-    # -------------------------------------------------
-    # STAGE 1: current position -> pickup
-    # -------------------------------------------------
-
+    # Stage 1: current -> pickup
     pickup_steps = max(STEPS // 2, 1)
-
     lat_step = (pickup_latitude - start_latitude) / pickup_steps
     lon_step = (pickup_longitude - start_longitude) / pickup_steps
 
@@ -149,15 +148,13 @@ def move_truck_through_route(
         speed = 0 if step == pickup_steps else 60
 
         try:
-            location = send_location(
-                truck_id, latitude, longitude, speed
-            )
+            location = send_location(truck_id, latitude, longitude, speed)
             log(
                 truck_id,
                 f"[PICKUP {step:02d}/{pickup_steps}] "
                 f"Lat: {location['latitude']:.4f} | "
                 f"Lon: {location['longitude']:.4f} | "
-                f"Speed: {location['speed']} km/h"
+                f"Speed: {location['speed']} km/h",
             )
         except requests.RequestException as error:
             log(truck_id, f"GPS update failed: {error}")
@@ -166,10 +163,7 @@ def move_truck_through_route(
         if step < pickup_steps:
             time.sleep(INTERVAL_SECONDS)
 
-    # -------------------------------------------------
-    # STAGE 2: pickup -> destination
-    # -------------------------------------------------
-
+    # Stage 2: pickup -> destination
     lat_step = (destination_latitude - pickup_latitude) / STEPS
     lon_step = (destination_longitude - pickup_longitude) / STEPS
 
@@ -179,15 +173,13 @@ def move_truck_through_route(
         speed = 0 if step == STEPS else 60
 
         try:
-            location = send_location(
-                truck_id, latitude, longitude, speed
-            )
+            location = send_location(truck_id, latitude, longitude, speed)
             log(
                 truck_id,
                 f"[DEST {step:02d}/{STEPS}] "
                 f"Lat: {location['latitude']:.4f} | "
                 f"Lon: {location['longitude']:.4f} | "
-                f"Speed: {location['speed']} km/h"
+                f"Speed: {location['speed']} km/h",
             )
         except requests.RequestException as error:
             log(truck_id, f"GPS update failed: {error}")
@@ -196,41 +188,24 @@ def move_truck_through_route(
         if step < STEPS:
             time.sleep(INTERVAL_SECONDS)
 
-    # -------------------------------------------------
-    # Automatic arrival check (backend decides completion)
-    # -------------------------------------------------
-
+    # Arrival check
     try:
         arrival_result = check_arrival(assignment_id)
 
         if arrival_result.get("arrival", {}).get("arrived"):
             completion = arrival_result.get("completion", {})
-            reoptimization = completion.get("reoptimization", {})
-
+            reopt = completion.get("reoptimization", {})
             log(truck_id, "ARRIVED - assignment auto-completed")
-            log(
-                truck_id,
-                f"Fleet re-optimization: {reoptimization.get('message')}"
-            )
+            log(truck_id, f"Fleet re-optimization: {reopt.get('message')}")
         else:
-            distance = arrival_result.get(
-                "distance_to_destination_km"
-            )
-            log(
-                truck_id,
-                f"Not yet arrived - {distance} km remaining"
-            )
+            distance = arrival_result.get("distance_to_destination_km")
+            log(truck_id, f"Not yet arrived - {distance} km remaining")
 
     except requests.RequestException as error:
         log(truck_id, f"Arrival check failed: {error}")
 
 
 def simulate_truck(assignment):
-    """
-    Fetches everything needed for one truck/assignment and
-    kicks off its movement. Meant to be run inside a thread.
-    """
-
     truck_id = assignment["truck_id"]
     assignment_id = assignment["assignment_id"]
     load_id = assignment["load_id"]
@@ -249,8 +224,7 @@ def simulate_truck(assignment):
     log(
         truck_id,
         f"Starting route: {shipment['pickup_city']} -> "
-        f"{shipment['destination_city']} "
-        f"(assignment #{assignment_id})"
+        f"{shipment['destination_city']} (assignment #{assignment_id})",
     )
 
     move_truck_through_route(
@@ -262,24 +236,32 @@ def simulate_truck(assignment):
         pickup_latitude=shipment["pickup_latitude"],
         pickup_longitude=shipment["pickup_longitude"],
         destination_latitude=shipment["destination_latitude"],
-        destination_longitude=shipment["destination_longitude"]
+        destination_longitude=shipment["destination_longitude"],
     )
 
+
+# -------------------------------------------------
+# Entry point
+# -------------------------------------------------
 
 def simulate_fleet():
     print("=" * 60)
     print("AI FLEET OPTIMIZER - MULTI-TRUCK GPS SIMULATOR")
     print("=" * 60)
 
+    try:
+        login()
+    except requests.RequestException as error:
+        print(f"Login failed: {error}")
+        print("Is the backend running on", BASE_URL, "?")
+        return
+
     in_transit = get_in_transit_assignments()
 
     if not in_transit:
         print()
         print("No in_transit assignments found.")
-        print(
-            "Start one or more assignments first "
-            "(PUT /assignments/{id}/start) before running this."
-        )
+        print("Start one or more assignments first (PUT /assignments/{id}/start).")
         return
 
     print(f"Found {len(in_transit)} truck(s) in transit:")
@@ -297,11 +279,10 @@ def simulate_fleet():
         for assignment in in_transit
     ]
 
-    for thread in threads:
-        thread.start()
-
-    for thread in threads:
-        thread.join()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
     print()
     print("=" * 60)

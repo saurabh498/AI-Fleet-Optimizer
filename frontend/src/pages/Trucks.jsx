@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createTruck, getTrucks } from "../services/api";
+import RoleGate from "../components/RoleGate";
 
 function Trucks() {
   const [trucks, setTrucks] = useState([]);
@@ -289,15 +290,17 @@ function Trucks() {
                 </p>
               </div>
 
-              <button
-                className="primary-button"
-                onClick={() => {
-                  resetForm();
-                  setShowForm(true);
-                }}
-              >
-                + Add Truck
-              </button>
+              <RoleGate allow={["manager", "admin"]}>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
+                  + Add Truck
+                </button>
+              </RoleGate>
             </div>
 
             <div className="truck-table">
