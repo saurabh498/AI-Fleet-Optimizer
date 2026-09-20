@@ -120,10 +120,10 @@
 .table-header,
 .table-row {
   display: grid;
-  grid-template-columns: 1.2fr 1.2fr 1.2fr 1.5fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1.1fr 0.7fr 1fr 1fr 1.1fr 0.9fr 0.9fr 70px;
+  gap: 12px;
   align-items: center;
-  min-width: 700px;
+  min-width: 900px;
 }
 
 .table-header {
@@ -206,11 +206,11 @@
 
 .shipment-header,
 .shipment-row {
-  min-width: 850px;
+  min-width: 1050px;
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1.2fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1.2fr 1.2fr 0.9fr 1fr 0.9fr 0.9fr 90px;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .shipment-header {

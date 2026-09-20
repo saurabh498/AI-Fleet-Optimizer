@@ -299,3 +299,162 @@
   color: #b91c1c;
   font-size: 0.85rem;
 }
+
+/* ============================================================
+   Confirm dialog
+   ============================================================ */
+
+.confirm-card {
+  max-width: 420px;
+  text-align: center;
+}
+
+.confirm-icon {
+  font-size: 2rem;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.confirm-icon.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.confirm-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+
+.confirm-message {
+  margin: 0 0 1.25rem;
+  color: #475569;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.danger-button {
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: #dc2626;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.danger-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Row action buttons
+   ============================================================ */
+
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.row-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 120ms ease;
+}
+
+.row-action-btn:hover {
+  border-color: #4f46e5;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+}
+
+.row-action-btn.delete:hover {
+  border-color: #dc2626;
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+
+/* Confirm dialog error banner */
+.confirm-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+/* ============================================================
+   Dashboard: simulator button + banner
+   ============================================================ */
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sim-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sim-banner.running {
+  background: #eff8ff;
+  color: #175cd3;
+  border: 1px solid #b2ddff;
+}
+
+.sim-banner.done {
+  background: #ecfdf3;
+  color: #027a48;
+  border: 1px solid #a6f4c5;
+}
+
+.sim-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(23, 92, 211, 0.25);
+  border-top-color: #175cd3;
+  border-radius: 50%;
+  animation: sim-spin 0.8s linear infinite;
+}
+
+@keyframes sim-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

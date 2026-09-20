@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { createShipment, getShipments } from "../services/api";
+import {
+  createShipment,
+  getShipments,
+  updateShipment,
+  deleteShipment,
+} from "../services/api";
 import RoleGate from "../components/RoleGate";
+import ConfirmDialog from "../components/ConfirmDialog";
+import EditShipmentModal from "../components/EditShipmentModal";
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -8,6 +15,10 @@ function Shipments() {
 
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingShipment, setEditingShipment] = useState(null);
+  const [deletingShipment, setDeletingShipment] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -170,18 +181,13 @@ function Shipments() {
       setShowForm(false);
       resetForm();
 
-      setSuccessMessage(
-        "Shipment added successfully."
-      );
+      setSuccessMessage("Shipment added successfully.");
 
       setTimeout(() => {
         setSuccessMessage("");
       }, 3000);
     } catch (error) {
-      console.error(
-        "Failed to create shipment:",
-        error
-      );
+      console.error("Failed to create shipment:", error);
 
       const message =
         error.response?.data?.detail ||
@@ -190,6 +196,32 @@ function Shipments() {
       setFormError(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUpdate = async (payload) => {
+    await updateShipment(editingShipment.load_id, payload);
+    await loadShipments();
+    setEditingShipment(null);
+    setSuccessMessage("Shipment updated successfully.");
+    setTimeout(() => setSuccessMessage(""), 3000);
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    setDeleteError("");
+    try {
+      await deleteShipment(deletingShipment.load_id);
+      await loadShipments();
+      setDeletingShipment(null);
+      setSuccessMessage("Shipment deleted successfully.");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      setDeleteError(
+        error.response?.data?.detail || "Failed to delete shipment."
+      );
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -355,6 +387,7 @@ function Shipments() {
                 <span>Cargo</span>
                 <span>Revenue</span>
                 <span>Status</span>
+                <span>Actions</span>
               </div>
 
               {shipments.map((shipment) => (
@@ -402,6 +435,28 @@ function Shipments() {
                   >
                     {shipment.status || "Unknown"}
                   </span>
+
+                  <RoleGate allow={["manager", "admin"]}>
+                    <div className="row-actions">
+                      <button
+                        className="row-action-btn"
+                        title="Edit shipment"
+                        onClick={() => setEditingShipment(shipment)}
+                      >
+                        ✏
+                      </button>
+                      <button
+                        className="row-action-btn delete"
+                        title="Delete shipment"
+                        onClick={() => {
+                          setDeletingShipment(shipment);
+                          setDeleteError("");
+                        }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </RoleGate>
 
                 </div>
               ))}
@@ -738,6 +793,35 @@ function Shipments() {
 
         </div>
       )}
+
+      {/* EDIT SHIPMENT MODAL */}
+      {editingShipment && (
+        <EditShipmentModal
+          shipment={editingShipment}
+          onClose={() => setEditingShipment(null)}
+          onSave={handleUpdate}
+        />
+      )}
+
+      {/* DELETE SHIPMENT CONFIRM */}
+      <ConfirmDialog
+        open={Boolean(deletingShipment)}
+        title="Delete this shipment?"
+        message={
+          deletingShipment
+            ? `Load #${deletingShipment.load_id} (${deletingShipment.pickup_city} → ${deletingShipment.destination_city}) will be permanently removed.`
+            : ""
+        }
+        error={deleteError}
+        confirmLabel="Delete"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setDeletingShipment(null);
+          setDeleteError("");
+        }}
+      />
 
     </div>
   );

@@ -84,7 +84,7 @@ function App() {
           <Route
             path="/analytics"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute roles={["admin", "manager"]}>
                 <AppShell>
                   <Analytics />
                 </AppShell>

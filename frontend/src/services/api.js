@@ -127,6 +127,16 @@ export const createTruck = async (truckData) => {
   return response.data;
 };
 
+export const updateTruck = async (truckId, truckData) => {
+  const response = await api.put(`/trucks/${truckId}`, truckData);
+  return response.data;
+};
+
+export const deleteTruck = async (truckId) => {
+  const response = await api.delete(`/trucks/${truckId}`);
+  return response.data;
+};
+
 export const getShipments = async () => {
   const response = await api.get("/shipments/");
   return response.data;
@@ -134,6 +144,16 @@ export const getShipments = async () => {
 
 export const createShipment = async (shipmentData) => {
   const response = await api.post("/shipments/", shipmentData);
+  return response.data;
+};
+
+export const updateShipment = async (loadId, shipmentData) => {
+  const response = await api.put(`/shipments/${loadId}`, shipmentData);
+  return response.data;
+};
+
+export const deleteShipment = async (loadId) => {
+  const response = await api.delete(`/shipments/${loadId}`);
   return response.data;
 };
 
@@ -159,6 +179,16 @@ export const getBaselineVsAI = async (truckId) => {
 
 export const getBackhaulMatches = async (truckId) => {
   const response = await api.get(`/backhaul/match/${truckId}`);
+  return response.data;
+};
+
+export const runSimulator = async () => {
+  const response = await api.post("/simulator/run");
+  return response.data;
+};
+
+export const getSimulatorStatus = async () => {
+  const response = await api.get("/simulator/status");
   return response.data;
 };
 

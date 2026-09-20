@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { createTruck, getTrucks } from "../services/api";
+import {
+  createTruck,
+  getTrucks,
+  updateTruck,
+  deleteTruck,
+} from "../services/api";
 import RoleGate from "../components/RoleGate";
+import ConfirmDialog from "../components/ConfirmDialog";
+import EditTruckModal from "../components/EditTruckModal";
 
 function Trucks() {
   const [trucks, setTrucks] = useState([]);
@@ -8,6 +15,10 @@ function Trucks() {
 
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingTruck, setEditingTruck] = useState(null);
+  const [deletingTruck, setDeletingTruck] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -150,6 +161,33 @@ function Trucks() {
       setSaving(false);
     }
   };
+
+    const handleUpdate = async (payload) => {
+    await updateTruck(editingTruck.truck_id, payload);
+    await loadTrucks();
+    setEditingTruck(null);
+    setSuccessMessage("Truck updated successfully.");
+    setTimeout(() => setSuccessMessage(""), 3000);
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    setDeleteError("");
+    try {
+      await deleteTruck(deletingTruck.truck_id);
+      await loadTrucks();
+      setDeletingTruck(null);
+      setSuccessMessage("Truck deleted successfully.");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      setDeleteError(
+        error.response?.data?.detail || "Failed to delete truck."
+      );
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
 
   const totalTrucks = trucks.length;
 
@@ -313,6 +351,7 @@ function Trucks() {
                 <span>Location</span>
                 <span>Destination</span>
                 <span>Status</span>
+                <span>Actions</span>
               </div>
 
               {trucks.map((truck) => (
@@ -357,6 +396,28 @@ function Trucks() {
                   >
                     {truck.status || "Unknown"}
                   </span>
+
+                  <RoleGate allow={["manager", "admin"]}>
+                    <div className="row-actions">
+                      <button
+                        className="row-action-btn"
+                        title="Edit truck"
+                        onClick={() => setEditingTruck(truck)}
+                      >
+                        ✏
+                      </button>
+                      <button
+                        className="row-action-btn delete"
+                        title="Delete truck"
+                        onClick={() => {
+                          setDeletingTruck(truck);
+                          setDeleteError("");
+                        }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </RoleGate>
 
                 </div>
               ))}
@@ -561,6 +622,35 @@ function Trucks() {
           </div>
         </div>
       )}
+
+      {/* EDIT TRUCK MODAL */}
+      {editingTruck && (
+        <EditTruckModal
+          truck={editingTruck}
+          onClose={() => setEditingTruck(null)}
+          onSave={handleUpdate}
+        />
+      )}
+
+      {/* DELETE TRUCK CONFIRM */}
+      <ConfirmDialog
+        open={Boolean(deletingTruck)}
+        title="Delete this truck?"
+        message={
+          deletingTruck
+            ? `Truck #${deletingTruck.truck_id} (${deletingTruck.truck_type}) will be permanently removed. This cannot be undone.`
+            : ""
+        }
+        error={deleteError}
+        confirmLabel="Delete"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setDeletingTruck(null);
+          setDeleteError("");
+        }}
+      />
 
     </div>
   );

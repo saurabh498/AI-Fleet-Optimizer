@@ -113,6 +113,10 @@ def delete_truck(
     truck_id: int,
     db: Session = Depends(get_db)
 ):
+    from backend.models.assignment import Assignment
+    from backend.models.assignment_history import AssignmentHistory
+    from backend.models.truck_location import TruckLocation
+
     truck = db.query(Truck).filter(
         Truck.truck_id == truck_id
     ).first()
@@ -122,6 +126,39 @@ def delete_truck(
             status_code=404,
             detail="Truck not found"
         )
+
+    # Refuse delete if truck has an active assignment
+    active = db.query(Assignment).filter(
+        Assignment.truck_id == truck_id,
+        Assignment.status.in_(["assigned", "in_transit"]),
+    ).first()
+
+    if active:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Cannot delete a truck with an active assignment. "
+                "Complete or cancel the assignment first."
+            ),
+        )
+
+    # Delete child records first (FK-safe order)
+    truck_assignments = db.query(Assignment).filter(
+        Assignment.truck_id == truck_id
+    ).all()
+
+    for a in truck_assignments:
+        db.query(AssignmentHistory).filter(
+            AssignmentHistory.assignment_id == a.assignment_id
+        ).delete()
+
+    db.query(Assignment).filter(
+        Assignment.truck_id == truck_id
+    ).delete()
+
+    db.query(TruckLocation).filter(
+        TruckLocation.truck_id == truck_id
+    ).delete()
 
     db.delete(truck)
     db.commit()

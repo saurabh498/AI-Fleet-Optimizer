@@ -1,8 +1,9 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   getTrucks,
   getShipments,
   getTruckDecision,
+  runSimulator,
 } from "../services/api";
 
 import KpiCard from "../components/KpiCard";
@@ -15,6 +16,9 @@ function Dashboard() {
   const [shipments, setShipments] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [simRunning, setSimRunning] = useState(false);
+  const [simMessage, setSimMessage] = useState("");
+  const pollRef = useRef(null);
 
   useEffect(() => {
     const loadFleetData = async () => {
@@ -51,6 +55,70 @@ function Dashboard() {
 
     loadFleetData();
   }, []);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const handleRunSimulator = async () => {
+    setSimRunning(true);
+    setSimMessage("Starting simulation...");
+
+    try {
+      const result = await runSimulator();
+
+      if (result.status === "no_active_assignments") {
+        setSimMessage(result.message);
+        setSimRunning(false);
+        return;
+      }
+
+      setSimMessage(result.message);
+
+      const startedAt = Date.now();
+      const maxDurationMs = 120_000; // stop polling after 2 minutes
+
+      if (pollRef.current) clearInterval(pollRef.current);
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const [truckData, shipmentData] = await Promise.all([
+            getTrucks(),
+            getShipments(),
+          ]);
+          setTrucks(truckData);
+          setShipments(shipmentData);
+
+          if (Date.now() - startedAt > maxDurationMs) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+            setSimRunning(false);
+            setSimMessage("Simulation window ended.");
+          }
+        } catch (err) {
+          console.error("Poll failed:", err);
+        }
+      }, 2000);
+    } catch (error) {
+      setSimMessage(
+        error.response?.data?.detail || "Failed to start simulation."
+      );
+      setSimRunning(false);
+    }
+  };
+
+  const handleStopSimulator = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setSimRunning(false);
+    setSimMessage("Simulation stopped by user.");
+  };
+
 
   const totalTrucks = trucks.length;
   const availableTrucks = trucks.filter((t) => t.status === "available").length;
@@ -92,11 +160,36 @@ function Dashboard() {
             AI-based fleet monitoring and backhaul decision support
           </p>
         </div>
-        <div className="system-status">
-          <span className="status-dot"></span>
-          System Online
+        <div className="dashboard-header-actions">
+          {simRunning ? (
+            <button
+              className="secondary-button"
+              onClick={handleStopSimulator}
+            >
+              Stop Simulation
+            </button>
+          ) : (
+            <button
+              className="primary-button"
+              onClick={handleRunSimulator}
+            >
+              🛰️ Run GPS Simulator
+            </button>
+          )}
+
+          <div className="system-status">
+            <span className="status-dot"></span>
+            System Online
+          </div>
         </div>
       </header>
+
+      {simMessage && (
+        <div className={`sim-banner ${simRunning ? "running" : "done"}`}>
+          {simRunning && <span className="sim-spinner" />}
+          <span>{simMessage}</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">Loading fleet data...</div>

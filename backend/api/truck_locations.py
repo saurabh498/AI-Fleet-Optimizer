@@ -105,11 +105,19 @@ def get_latest_truck_location(
     truck_id: int,
     db: Session = Depends(get_db)
 ):
-    return db.query(TruckLocation).filter(
+    location = db.query(TruckLocation).filter(
         TruckLocation.truck_id == truck_id
     ).order_by(
         TruckLocation.timestamp.desc()
     ).first()
+
+    if location is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No location data available for truck {truck_id}",
+        )
+
+    return location
 
 
 @router.get("/truck/{truck_id}", response_model=list[TruckLocationResponse])

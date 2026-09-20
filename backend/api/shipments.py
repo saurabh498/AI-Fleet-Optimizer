@@ -94,6 +94,9 @@ def delete_shipment(
     load_id: int,
     db: Session = Depends(get_db)
 ):
+    from backend.models.assignment import Assignment
+    from backend.models.assignment_history import AssignmentHistory
+
     shipment = db.query(Shipment).filter(
         Shipment.load_id == load_id
     ).first()
@@ -103,6 +106,33 @@ def delete_shipment(
             status_code=404,
             detail="Shipment not found"
         )
+
+    active = db.query(Assignment).filter(
+        Assignment.load_id == load_id,
+        Assignment.status.in_(["assigned", "in_transit"]),
+    ).first()
+
+    if active:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Cannot delete a shipment with an active assignment. "
+                "Complete or cancel the assignment first."
+            ),
+        )
+
+    shipment_assignments = db.query(Assignment).filter(
+        Assignment.load_id == load_id
+    ).all()
+
+    for a in shipment_assignments:
+        db.query(AssignmentHistory).filter(
+            AssignmentHistory.assignment_id == a.assignment_id
+        ).delete()
+
+    db.query(Assignment).filter(
+        Assignment.load_id == load_id
+    ).delete()
 
     db.delete(shipment)
     db.commit()

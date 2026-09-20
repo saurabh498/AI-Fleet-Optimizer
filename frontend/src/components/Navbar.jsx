@@ -3,12 +3,12 @@
 import { useAuth } from "../context/AuthContext";
 
 
-const navigation = [
-  { to: "/", label: "Dashboard", icon: "⌂" },
-  { to: "/trucks", label: "Fleet", icon: "▣" },
-  { to: "/shipments", label: "Shipments", icon: "□" },
-  { to: "/ai-recommendations", label: "AI Intelligence", icon: "✦" },
-  { to: "/analytics", label: "Analytics", icon: "◫" },
+const ALL_NAV = [
+  { to: "/", label: "Dashboard", icon: "⌂", roles: ["admin", "manager", "driver"] },
+  { to: "/trucks", label: "Fleet", icon: "▣", roles: ["admin", "manager", "driver"] },
+  { to: "/shipments", label: "Shipments", icon: "□", roles: ["admin", "manager", "driver"] },
+  { to: "/ai-recommendations", label: "AI Intelligence", icon: "✦", roles: ["admin", "manager", "driver"] },
+  { to: "/analytics", label: "Analytics", icon: "◫", roles: ["admin", "manager"] },
 ];
 
 
@@ -16,14 +16,18 @@ function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const role = user?.role || "driver";
+
+  const navigation = ALL_NAV.filter((item) =>
+    item.roles.includes(role)
+  );
+
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
 
-  const roleLabel = user?.role
-    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-    : "";
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
   const initials = user?.full_name
     ? user.full_name
