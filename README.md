@@ -12,6 +12,9 @@ multi-objective optimization.
 [![Tests](https://img.shields.io/badge/tests-72%20passing-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **Final-year college project** — runs entirely on localhost.
+> See [Quick Start](#quick-start) below.
+
 ---
 
 ## The Problem
@@ -38,7 +41,9 @@ Given a truck that just completed a delivery, the system:
 6. **Recommends an action**: `ASSIGN_NOW` · `REVIEW` · `WAIT` · `REPOSITION` · `RETURN_EMPTY`
 
 Every API response includes a cost breakdown, CO₂ estimate, and a
-human-readable SHAP summary.
+human-readable SHAP summary. A built-in **server-side GPS simulator**
+button lets you watch trucks move on the live map without needing a
+terminal.
 
 ---
 
@@ -66,7 +71,7 @@ human-readable SHAP summary.
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  React Dashboard (Leaflet map, KPI cards, decision panel)        │
-│  • JWT auth  • Protected routes  • Token auto-refresh            │
+│  • JWT auth  • Role-based nav  • Token auto-refresh              │
 └──────────────────────────┬───────────────────────────────────────┘
                            │  REST / JSON
 ┌──────────────────────────▼───────────────────────────────────────┐
@@ -110,34 +115,51 @@ human-readable SHAP summary.
 
 **Prerequisites:** Python 3.13, Node 22, PostgreSQL 16.
 
-```bash
+```powershell
 git clone https://github.com/saurabh498/AI-Fleet-Optimizer.git
 cd AI-Fleet-Optimizer
 
-# Backend
+# Backend setup
 python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1
 pip install -r backend/requirements.txt
+```
 
-cp .env.example .env              # set DATABASE_URL
+**Configure PostgreSQL** — create a database called `fleet_optimizer`
+and set the connection string:
 
-# Create tables + seed users
-python -c "from backend.database.connection import engine; \
-           from backend.database.base import Base; \
-           import backend.models; \
-           Base.metadata.create_all(bind=engine)"
+```powershell
+# .env file in project root
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fleet_optimizer
+```
+
+**Create tables + seed users:**
+
+```powershell
+python -c "from backend.database.connection import engine; from backend.database.base import Base; import backend.models; Base.metadata.create_all(bind=engine)"
 python -m scripts.seed_users
+```
 
-# Seed data + train models
+**Seed data + train ML models:**
+
+```powershell
 python -m ml.generate_historical_data --full-year
 python -m ml.xgboost_demand_model
 python -m ml.xgboost_waiting_time_model
+```
 
-# Run backend
+**Run backend:**
+
+```powershell
 uvicorn backend.main:app --reload --port 8000
+```
 
-# Frontend (new terminal)
-cd frontend && npm install && npm run dev
+**Frontend (new terminal):**
+
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
 Open **http://localhost:5173** and log in with:
@@ -154,15 +176,42 @@ API docs: **http://localhost:8000/docs**
 
 ## Authentication & Roles
 
-| Role | Read | Write fleet data | Manage users |
-|---|---|---|---|
-| **Admin** | ✅ | ✅ | ✅ |
-| **Manager** | ✅ | ✅ | — |
-| **Driver** | ✅ | Location updates only | — |
+| Role | Read | Write fleet data | Analytics | Location updates |
+|---|---|---|---|---|
+| **Admin** | ✅ | ✅ | ✅ | ✅ |
+| **Manager** | ✅ | ✅ | ✅ | ✅ |
+| **Driver** | ✅ | — | — | ✅ |
 
 JWT access tokens (30 min) + refresh tokens (7 days). Axios interceptor
 auto-refreshes on 401 without interrupting the user. Passwords hashed
 with bcrypt.
+
+The navbar **filters links by role** — drivers don't see the Analytics
+tab, and write buttons ("Add Truck", "Edit", "Delete") are hidden for
+non-manager roles.
+
+---
+
+## GPS Simulator
+
+Two ways to run it:
+
+**1. Server-side (recommended for demos)** — click **🛰️ Run GPS Simulator**
+on the Dashboard. The backend runs the full route simulation in a
+background task; the frontend polls for updates and shows live movement
+on the Fleet Map. No terminal needed.
+
+**2. Standalone script** — for debugging or CI:
+
+```powershell
+# Local backend
+$env:SIM_BASE_URL = "http://127.0.0.1:8000"
+python -m simulator.gps_simulator
+```
+
+Either way, the simulator only moves trucks whose assignments are
+`in_transit`. If no truck is in transit, you'll see a friendly
+"No trucks are currently in transit" message.
 
 ---
 
@@ -221,7 +270,7 @@ CO₂ factors.
 
 Reproduce:
 
-```bash
+```powershell
 python -m scripts.reset_benchmark_state
 python -m scripts.seed_benchmark_shipments --count 50 --clear --seed 42
 python -m scripts.run_benchmark
@@ -264,13 +313,16 @@ Every input traces to a public source. Full citations:
 │   └── main.py
 ├── frontend/                # React 19 + Vite
 │   ├── src/context/         # AuthContext
-│   ├── src/components/      # ProtectedRoute, Navbar, AIRecommendation
+│   ├── src/components/      # ProtectedRoute, Navbar, ConfirmDialog, ...
+│   ├── src/hooks/           # useRole
 │   └── src/services/        # api.js (axios + interceptor), auth.js
 ├── ml/
 │   ├── generate_historical_data.py
 │   ├── explainability.py    # SHAP wrapper
 │   ├── xgboost_*.py
 │   └── models/              # Trained .joblib artifacts
+├── simulator/
+│   └── gps_simulator.py     # Standalone simulator script
 ├── scripts/                 # Benchmark CLI, seeders
 ├── tests/                   # 72 tests
 ├── config/cost_model.yaml   # Tunable rates
@@ -283,7 +335,7 @@ Every input traces to a public source. Full citations:
 
 ## Testing
 
-```bash
+```powershell
 python -m pytest tests/ -v --ignore=tests/test_duplicate_execution.py
 ```
 
@@ -340,6 +392,8 @@ Showing AI vs. naive vs. greedy vs. rules — with real numbers — is.
   Self-hosting is a production upgrade.
 - **Cost rates are 2024 industry-typical**, not a specific fleet's
   actual P&L. Configurable in `config/cost_model.yaml`.
+- **Runs on localhost.** No cloud deployment — this is intentional for a
+  college project demonstration.
 
 ---
 
@@ -353,8 +407,9 @@ Showing AI vs. naive vs. greedy vs. rules — with real numbers — is.
 - [x] JWT auth + RBAC
 - [x] Frontend auth integration
 - [x] KPI dashboard with CO₂ + SHAP
-- [ ] Live demo deployment (Render + Vercel)
-- [ ] Demo video
+- [x] Role-based navbar
+- [x] Edit/delete CRUD from UI
+- [x] Server-side GPS simulator button
 - [ ] WebSocket live truck tracking
 - [ ] Multi-depot VRPTW
 
@@ -370,5 +425,5 @@ MIT — see [LICENSE](LICENSE).
 
 **Saurabh** — [GitHub](https://github.com/saurabh498)
 
-Built as a portfolio project exploring the intersection of ML,
+Final-year college project exploring the intersection of ML,
 optimization, and logistics.
