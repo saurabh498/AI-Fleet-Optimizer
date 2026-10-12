@@ -1,0 +1,34 @@
+﻿# ============================================================
+#  DRIVER RULES - UNVERIFIED ASSUMPTIONS
+#
+#  The values below are PLACEHOLDERS for demonstration only.
+#  They are NOT verified against any specific jurisdiction's law
+#  or fleet policy. Before any operational use, replace these
+#  with values verified against the applicable Motor Vehicle
+#  rules, fleet policy, and legal counsel.
+#
+#  The system will mark every driver-pass as 'requires_review: true'
+#  while 'verified_against_law' is false.
+# ============================================================
+
+rules:
+  # Maximum continuous driving before a mandatory rest
+  max_continuous_driving_minutes: 240    # placeholder
+
+  # Minimum rest duration once required
+  min_rest_duration_minutes: 30          # placeholder
+
+  # Maximum driving in a rolling 24h window
+  max_daily_driving_minutes: 540         # placeholder
+
+  # Maximum total driving in a rolling 7-day window
+  max_weekly_driving_minutes: 3600       # placeholder
+
+metadata:
+  verified_against_law: false
+  jurisdiction: "UNSPECIFIED"
+  last_reviewed: "2026-10-12"
+  notes: >
+    Illustrative only. Not verified against any specific Motor
+    Vehicle Act or fleet policy. Set verified_against_law to true
+    ONLY after legal review.

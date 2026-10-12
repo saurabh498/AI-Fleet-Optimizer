@@ -7,3 +7,4 @@ from backend.models.prediction import Prediction
 from backend.models.assignment_history import AssignmentHistory
 from backend.models.route_cache import RouteCache
 from backend.models.user import User
+from backend.models.driver import Driver

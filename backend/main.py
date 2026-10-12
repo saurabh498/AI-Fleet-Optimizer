@@ -16,6 +16,7 @@ from backend.api.assignments import router as assignments_router
 from backend.api import demand_prediction
 from backend.api import waiting_time_prediction
 from backend.api.simulator import router as simulator_router
+from backend.api.drivers import router as drivers_router
 from backend.api.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -47,6 +48,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(auth_router)
 app.include_router(simulator_router)
+app.include_router(drivers_router)
 app.include_router(trucks_router)
 app.include_router(shipments_router)
 app.include_router(locations_router)
