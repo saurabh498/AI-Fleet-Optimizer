@@ -15,6 +15,7 @@ import {
 
 
 // Fix Leaflet default marker icons in Vite/React
+// (still needed if any default markers are used elsewhere)
 delete L.Icon.Default.prototype._getIconUrl;
 
 L.Icon.Default.mergeOptions({
@@ -27,7 +28,36 @@ L.Icon.Default.mergeOptions({
 });
 
 
-// Custom facility markers (avoids shipping additional image assets)
+// -------------------------------------------------
+// Truck icon — emoji in a status-coloured ring
+// -------------------------------------------------
+
+const TRUCK_STATUS_COLORS = {
+  available: "#12b76a",
+  in_transit: "#175cd3",
+  assigned: "#f79009",
+  waiting: "#f59e0b",
+};
+
+function makeTruckIcon(status) {
+  const color = TRUCK_STATUS_COLORS[status] || "#667085";
+  return L.divIcon({
+    className: "truck-marker",
+    html:
+      '<div class="truck-marker-inner" style="border-color:' +
+      color +
+      '">&#128667;</div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
+  });
+}
+
+
+// -------------------------------------------------
+// Facility icons
+// -------------------------------------------------
+
 const VERIFIED_FACILITY_ICON = L.divIcon({
   className: "rest-facility-marker verified",
   html: '<div class="rest-facility-marker-inner">&#127968;</div>',
@@ -134,7 +164,7 @@ function FleetMap({ trucks }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Truck markers - unchanged behaviour */}
+        {/* Truck markers */}
 
         {trucks.map((truck) => {
           const location = locations[truck.truck_id];
@@ -147,10 +177,13 @@ function FleetMap({ trucks }) {
             <Marker
               key={"truck-" + truck.truck_id}
               position={[location.latitude, location.longitude]}
+              icon={makeTruckIcon(truck.status)}
             >
               <Popup>
                 <div className="truck-popup">
-                  <strong>Truck #{truck.truck_id}</strong>
+                  <strong>
+                    &#128667; Truck #{truck.truck_id}
+                  </strong>
 
                   <p>
                     <b>Type:</b> {truck.truck_type}
@@ -279,24 +312,28 @@ function FleetMap({ trucks }) {
         })}
       </MapContainer>
 
-      {/* Legend - only shows if we have facility data */}
+      {/* Legend */}
 
       {(verifiedCount > 0 || pendingCount > 0) && (
         <div className="map-legend">
           <div className="map-legend-title">Map Legend</div>
 
           <div className="map-legend-item">
-            <span className="map-legend-icon truck" />
+            <span className="map-legend-icon truck">&#128667;</span>
             <span>Trucks</span>
           </div>
 
           <div className="map-legend-item">
-            <span className="map-legend-icon facility-verified" />
+            <span className="map-legend-icon facility-verified">
+              &#127968;
+            </span>
             <span>Verified facility ({verifiedCount})</span>
           </div>
 
           <div className="map-legend-item">
-            <span className="map-legend-icon facility-pending" />
+            <span className="map-legend-icon facility-pending">
+              &#127968;
+            </span>
             <span>Pending facility ({pendingCount})</span>
           </div>
         </div>
