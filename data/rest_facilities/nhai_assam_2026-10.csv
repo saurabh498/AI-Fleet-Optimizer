@@ -1,0 +1,2 @@
+﻿name,facility_type,latitude,longitude,address,road_reference,available_amenities,source_url,source_date,verification_status,notes
+"NHAI WSA Borghat (NH-27 km 273.400)",wayside_amenity,26.3132,92.7091,"Borghat, Nagaon District, Assam",NH-27,,"https://nhai.gov.in/",2026-10-13,pending,"Source: NHAI RFP NHAI/Wayside-amenities/East/Large-2 dated 10.02.2021, Annexure A. Planned large WSA on 2.443 Ha of an 8.222 Ha parcel. Operational status not confirmed. Replace source_url with the direct RFP PDF link once located."
