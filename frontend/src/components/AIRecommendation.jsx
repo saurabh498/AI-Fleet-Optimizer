@@ -2,13 +2,17 @@
 import { useNavigate } from "react-router-dom";
 
 import RoleGate from "./RoleGate";
-import api from "../services/api";
+import SearchBriefModal from "./SearchBriefModal";
+import api, { getSearchBrief } from "../services/api";
 
 
 function AIRecommendation({ recommendation }) {
   const navigate = useNavigate();
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [brief, setBrief] = useState(null);
+  const [briefError, setBriefError] = useState("");
 
   if (!recommendation) {
     return null;
@@ -54,6 +58,22 @@ function AIRecommendation({ recommendation }) {
       );
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleOpenBrief = async () => {
+    setBriefLoading(true);
+    setBriefError("");
+    try {
+      const result = await getSearchBrief(recommendation.truck_id);
+      setBrief(result);
+    } catch (err) {
+      setBriefError(
+        err.response?.data?.detail ||
+          "Failed to generate search brief."
+      );
+    } finally {
+      setBriefLoading(false);
     }
   };
 
@@ -352,12 +372,16 @@ function AIRecommendation({ recommendation }) {
         </div>
       )}
 
-      {bestMatch && canAssign && (
-        <RoleGate allow={["manager", "admin"]}>
-          <div className="ai-actions">
-            {assignError && (
-              <div className="ai-action-error">{assignError}</div>
-            )}
+      <div className="ai-actions">
+        {assignError && (
+          <div className="ai-action-error">{assignError}</div>
+        )}
+        {briefError && (
+          <div className="ai-action-error">{briefError}</div>
+        )}
+
+        {bestMatch && canAssign && (
+          <RoleGate allow={["manager", "admin"]}>
             <button
               className="primary-button assign-now-button"
               onClick={handleAssignNow}
@@ -365,8 +389,25 @@ function AIRecommendation({ recommendation }) {
             >
               {assigning ? "Assigning..." : "Assign & Start Trip"}
             </button>
-          </div>
-        </RoleGate>
+          </RoleGate>
+        )}
+
+        <button
+          className="secondary-button search-brief-button"
+          onClick={handleOpenBrief}
+          disabled={briefLoading}
+        >
+          {briefLoading
+            ? "Generating..."
+            : "📋 External Search Brief"}
+        </button>
+      </div>
+
+      {brief && (
+        <SearchBriefModal
+          brief={brief}
+          onClose={() => setBrief(null)}
+        />
       )}
     </div>
   );

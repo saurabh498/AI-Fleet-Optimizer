@@ -194,6 +194,12 @@ export const getBackhaulMatches = async (truckId) => {
 };
 
 
+export const getSearchBrief = async (truckId) => {
+  const response = await api.post("/search-brief/" + truckId);
+  return response.data;
+};
+
+
 // -------------------------------------------------
 // Simulator
 // -------------------------------------------------

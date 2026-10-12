@@ -16,6 +16,7 @@ from backend.api.assignments import router as assignments_router
 from backend.api import demand_prediction
 from backend.api import waiting_time_prediction
 from backend.api.simulator import router as simulator_router
+from backend.api.search_brief import router as search_brief_router
 from backend.api.drivers import router as drivers_router
 from backend.api.rest_facilities import router as rest_facilities_router
 from backend.api.auth import router as auth_router
@@ -49,6 +50,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(auth_router)
 app.include_router(simulator_router)
+app.include_router(search_brief_router)
 app.include_router(drivers_router)
 app.include_router(rest_facilities_router)
 app.include_router(trucks_router)
