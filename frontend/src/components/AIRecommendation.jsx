@@ -4,9 +4,8 @@ import { useNavigate } from "react-router-dom";
 import RoleGate from "./RoleGate";
 import api from "../services/api";
 
-function AIRecommendation({ recommendation }) {
-  // Hooks must be called unconditionally, before any early return.
 
+function AIRecommendation({ recommendation }) {
   const navigate = useNavigate();
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
@@ -19,6 +18,13 @@ function AIRecommendation({ recommendation }) {
   const decisionClass = decision.toLowerCase();
 
   const bestMatch = recommendation.best_match;
+  const metrics = recommendation.decision_metrics;
+  const mlExplanation = recommendation.ml_explanation;
+  const mlContext = recommendation.ml_context;
+  const shap = mlExplanation?.shap;
+  const costBreakdown = bestMatch?.estimated_cost_breakdown;
+  const driverFeasibility = recommendation.driver_feasibility;
+  const restSuggestion = recommendation.rest_facility_suggestion;
 
   const canAssign =
     decision === "ASSIGN_NOW" || decision === "REVIEW";
@@ -30,47 +36,38 @@ function AIRecommendation({ recommendation }) {
 
     try {
       const resp = await api.post(
-        `/assignments/truck/${recommendation.truck_id}/load/${bestMatch.load_id}`
+        "/assignments/truck/" +
+          recommendation.truck_id +
+          "/load/" +
+          bestMatch.load_id
       );
       const assignmentId = resp.data?.assignment?.assignment_id;
 
-      // Immediately start the trip so the truck moves
       if (assignmentId) {
-        await api.put(`/assignments/${assignmentId}/start`);
+        await api.put("/assignments/" + assignmentId + "/start");
       }
 
       navigate("/trucks");
     } catch (err) {
-      const msg =
-        err.response?.data?.detail ||
-        "Failed to assign shipment.";
-      setAssignError(msg);
+      setAssignError(
+        err.response?.data?.detail || "Failed to assign shipment."
+      );
     } finally {
       setAssigning(false);
     }
   };
-  const metrics = recommendation.decision_metrics;
-  const mlExplanation = recommendation.ml_explanation;
-  const mlContext = recommendation.ml_context;
-  const shap = mlExplanation?.shap;
-  const costBreakdown = bestMatch?.estimated_cost_breakdown;
 
   return (
     <div className="ai-recommendation-card">
-
-      {/* Header */}
-
       <div className="ai-card-header">
         <div>
           <p className="ai-label">AI DECISION ENGINE</p>
           <h2>Truck #{recommendation.truck_id}</h2>
         </div>
-        <span className={`decision-badge ${decisionClass}`}>
+        <span className={"decision-badge " + decisionClass}>
           {decision.replaceAll("_", " ")}
         </span>
       </div>
-
-      {/* Main Decision */}
 
       <div className="ai-decision">
         <div className="ai-decision-icon">🤖</div>
@@ -80,19 +77,14 @@ function AIRecommendation({ recommendation }) {
         </div>
       </div>
 
-      {/* Reason */}
-
       <div className="ai-reason">
         <strong>AI Reason</strong>
         <p>{recommendation.reason}</p>
       </div>
 
-      {/* Best Match */}
-
       {bestMatch && (
         <div className="best-match">
           <div className="subsection-title">Best Backhaul Match</div>
-
           <div className="match-grid">
             <div>
               <span>Load</span>
@@ -123,12 +115,9 @@ function AIRecommendation({ recommendation }) {
         </div>
       )}
 
-      {/* Decision Metrics */}
-
       {metrics && (
         <div className="ai-metrics">
           <div className="subsection-title">Decision Metrics</div>
-
           <div className="metrics-grid">
             <div className="metric">
               <span>Decision Score</span>
@@ -138,7 +127,7 @@ function AIRecommendation({ recommendation }) {
               <span>ML Adjustment</span>
               <strong>
                 {metrics.ml_adjustment > 0
-                  ? `+${metrics.ml_adjustment}`
+                  ? "+" + metrics.ml_adjustment
                   : metrics.ml_adjustment}
               </strong>
             </div>
@@ -156,7 +145,110 @@ function AIRecommendation({ recommendation }) {
         </div>
       )}
 
-      {/* Cost Breakdown */}
+      {driverFeasibility && (
+        <div
+          className={
+            "driver-panel " +
+            (driverFeasibility.feasible ? "feasible" : "infeasible")
+          }
+        >
+          <div className="subsection-title">Driver Feasibility</div>
+          <div className="metrics-grid">
+            <div className="metric">
+              <span>Driver</span>
+              <strong>{driverFeasibility.display_name}</strong>
+            </div>
+            <div className="metric">
+              <span>Status</span>
+              <strong>{driverFeasibility.availability_status}</strong>
+            </div>
+            <div className="metric">
+              <span>Driving Minutes</span>
+              <strong>{driverFeasibility.accumulated_driving_minutes}</strong>
+            </div>
+            <div className="metric">
+              <span>Since Last Rest</span>
+              <strong>
+                {driverFeasibility.accumulated_since_last_rest_minutes} min
+              </strong>
+            </div>
+            <div className="metric">
+              <span>Trip Estimate</span>
+              <strong>
+                {driverFeasibility.estimated_trip_minutes} min
+              </strong>
+            </div>
+            <div className="metric">
+              <span>Feasible</span>
+              <strong>
+                {driverFeasibility.feasible === true
+                  ? "Yes"
+                  : driverFeasibility.feasible === false
+                    ? "No"
+                    : "Unknown"}
+              </strong>
+            </div>
+          </div>
+          <div className="driver-reason">
+            <strong>Reason:</strong> {driverFeasibility.reason}
+          </div>
+          {driverFeasibility.rules_verified_against_law === false && (
+            <div className="driver-unverified">
+              ⚠ Driving-hour rules not verified against law — manual review required
+            </div>
+          )}
+        </div>
+      )}
+
+      {restSuggestion && (
+        <div className="rest-facility-panel">
+          <div className="subsection-title">
+            {restSuggestion.recommended_action_label
+              ? restSuggestion.recommended_action_label.replace(/_/g, " ")
+              : "Rest Facility Suggestion"}
+          </div>
+
+          {restSuggestion.facility ? (
+            <>
+              <div className="rest-facility-name">
+                {restSuggestion.facility.name}
+              </div>
+              <div className="metrics-grid">
+                <div className="metric">
+                  <span>Type</span>
+                  <strong>
+                    {String(restSuggestion.facility.facility_type).replace(/_/g, " ")}
+                  </strong>
+                </div>
+                <div className="metric">
+                  <span>Distance</span>
+                  <strong>{restSuggestion.facility.distance_km} km</strong>
+                </div>
+                <div className="metric">
+                  <span>Duration</span>
+                  <strong>{restSuggestion.facility.duration_min} min</strong>
+                </div>
+                <div className="metric">
+                  <span>Distance Source</span>
+                  <strong>{restSuggestion.facility.distance_source}</strong>
+                </div>
+              </div>
+              <div className="driver-reason">
+                <strong>Reason:</strong> {restSuggestion.reason}
+              </div>
+              {restSuggestion.facility.distance_source === "haversine" && (
+                <div className="rest-facility-warning">
+                  ⚠ Distance is a straight-line estimate — road routing unavailable
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="driver-reason">
+              <strong>Reason:</strong> {restSuggestion.reason}
+            </div>
+          )}
+        </div>
+      )}
 
       {costBreakdown && (
         <div className="cost-breakdown">
@@ -199,8 +291,6 @@ function AIRecommendation({ recommendation }) {
         </div>
       )}
 
-      {/* Environmental Impact */}
-
       {bestMatch?.co2_kg != null && (
         <div className="co2-impact">
           <div className="subsection-title">Environmental Impact</div>
@@ -218,8 +308,6 @@ function AIRecommendation({ recommendation }) {
           </div>
         </div>
       )}
-
-      {/* ML Context */}
 
       {mlContext?.available && (
         <div className="ml-context">
@@ -245,65 +333,24 @@ function AIRecommendation({ recommendation }) {
         </div>
       )}
 
-      {/* ML Explanation */}
-
       {mlExplanation && (
         <div
-          className={`ml-explanation ${(mlExplanation.impact || "NEUTRAL").toLowerCase()}`}
+          className={
+            "ml-explanation " +
+            (mlExplanation.impact || "NEUTRAL").toLowerCase()
+          }
         >
           <strong>ML Impact: {mlExplanation.impact}</strong>
           <p>{mlExplanation.reason}</p>
         </div>
       )}
 
-      {/* SHAP Explainability */}
-
       {shap?.summary && (
         <div className="shap-explanation">
           <div className="subsection-title">SHAP Explainability</div>
-
           <p className="shap-summary">{shap.summary}</p>
-
-          {(shap.predicted_value != null || shap.base_value != null) && (
-            <div className="shap-baseline">
-              <span>Baseline: {Number(shap.base_value || 0).toFixed(2)}</span>
-              <span>Prediction: {Number(shap.predicted_value || 0).toFixed(2)}</span>
-            </div>
-          )}
-
-          {shap.top_drivers?.length > 0 && (
-            <div className="shap-drivers">
-              <strong className="shap-drivers-title">Pushing prediction up</strong>
-              {shap.top_drivers.map((d, i) => (
-                <div key={`pos-${i}`} className="shap-driver positive">
-                  <span className="shap-feature">{d.feature}</span>
-                  <span className="shap-value">{Number(d.value).toFixed(2)}</span>
-                  <span className="shap-impact">
-                    +{Number(d.impact).toFixed(3)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {shap.top_negative?.length > 0 && (
-            <div className="shap-drivers">
-              <strong className="shap-drivers-title">Pulling prediction down</strong>
-              {shap.top_negative.map((d, i) => (
-                <div key={`neg-${i}`} className="shap-driver negative">
-                  <span className="shap-feature">{d.feature}</span>
-                  <span className="shap-value">{Number(d.value).toFixed(2)}</span>
-                  <span className="shap-impact">
-                    {Number(d.impact).toFixed(3)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
-
-      {/* Action buttons */}
 
       {bestMatch && canAssign && (
         <RoleGate allow={["manager", "admin"]}>
@@ -321,9 +368,9 @@ function AIRecommendation({ recommendation }) {
           </div>
         </RoleGate>
       )}
-
     </div>
   );
 }
+
 
 export default AIRecommendation;

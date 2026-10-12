@@ -7,7 +7,9 @@
 
 import Dashboard from "./pages/Dashboard";
 import Trucks from "./pages/Trucks";
+import Drivers from "./pages/Drivers";
 import Shipments from "./pages/Shipments";
+import RestFacilities from "./pages/RestFacilities";
 import AIRecommendations from "./pages/AIRecommendations";
 import Analytics from "./pages/Analytics";
 import Login from "./pages/Login";
@@ -16,6 +18,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
 import "./App.css";
+
 
 function AppShell({ children }) {
   return (
@@ -26,24 +29,19 @@ function AppShell({ children }) {
   );
 }
 
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-
-          <Route
-            path="/login"
-            element={<Login />}
-          />
+          <Route path="/login" element={<Login />} />
 
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <AppShell>
-                  <Dashboard />
-                </AppShell>
+                <AppShell><Dashboard /></AppShell>
               </ProtectedRoute>
             }
           />
@@ -52,9 +50,16 @@ function App() {
             path="/trucks"
             element={
               <ProtectedRoute>
-                <AppShell>
-                  <Trucks />
-                </AppShell>
+                <AppShell><Trucks /></AppShell>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/drivers"
+            element={
+              <ProtectedRoute>
+                <AppShell><Drivers /></AppShell>
               </ProtectedRoute>
             }
           />
@@ -63,9 +68,16 @@ function App() {
             path="/shipments"
             element={
               <ProtectedRoute>
-                <AppShell>
-                  <Shipments />
-                </AppShell>
+                <AppShell><Shipments /></AppShell>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/rest-facilities"
+            element={
+              <ProtectedRoute>
+                <AppShell><RestFacilities /></AppShell>
               </ProtectedRoute>
             }
           />
@@ -74,9 +86,7 @@ function App() {
             path="/ai-recommendations"
             element={
               <ProtectedRoute>
-                <AppShell>
-                  <AIRecommendations />
-                </AppShell>
+                <AppShell><AIRecommendations /></AppShell>
               </ProtectedRoute>
             }
           />
@@ -85,9 +95,7 @@ function App() {
             path="/analytics"
             element={
               <ProtectedRoute roles={["admin", "manager"]}>
-                <AppShell>
-                  <Analytics />
-                </AppShell>
+                <AppShell><Analytics /></AppShell>
               </ProtectedRoute>
             }
           />
@@ -96,7 +104,6 @@ function App() {
             path="*"
             element={<Navigate to="/" replace />}
           />
-
         </Routes>
       </BrowserRouter>
     </AuthProvider>

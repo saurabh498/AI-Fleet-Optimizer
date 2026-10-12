@@ -20,22 +20,14 @@ const api = axios.create({
 });
 
 
-// -------------------------------------------------
-// Request interceptor: attach Bearer token
-// -------------------------------------------------
-
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token && !config.headers.Authorization) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = "Bearer " + token;
   }
   return config;
 });
 
-
-// -------------------------------------------------
-// Response interceptor: refresh on 401 once
-// -------------------------------------------------
 
 let refreshPromise = null;
 
@@ -65,10 +57,9 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // De-dupe concurrent refreshes
     if (!refreshPromise) {
       refreshPromise = axios
-        .post(`${BASE_URL}/auth/refresh`, {
+        .post(BASE_URL + "/auth/refresh", {
           refresh_token: refreshToken,
         })
         .then((resp) => {
@@ -82,7 +73,7 @@ api.interceptors.response.use(
 
     try {
       const newToken = await refreshPromise;
-      original.headers.Authorization = `Bearer ${newToken}`;
+      original.headers.Authorization = "Bearer " + newToken;
       return api(original);
     } catch (refreshError) {
       clearAuth();
@@ -94,7 +85,7 @@ api.interceptors.response.use(
 
 
 // -------------------------------------------------
-// Auth endpoints
+// Auth
 // -------------------------------------------------
 
 export const loginUser = async (email, password) => {
@@ -114,7 +105,7 @@ export const fetchCurrentUser = async () => {
 
 
 // -------------------------------------------------
-// Fleet endpoints (unchanged signatures)
+// Trucks
 // -------------------------------------------------
 
 export const getTrucks = async () => {
@@ -128,14 +119,19 @@ export const createTruck = async (truckData) => {
 };
 
 export const updateTruck = async (truckId, truckData) => {
-  const response = await api.put(`/trucks/${truckId}`, truckData);
+  const response = await api.put("/trucks/" + truckId, truckData);
   return response.data;
 };
 
 export const deleteTruck = async (truckId) => {
-  const response = await api.delete(`/trucks/${truckId}`);
+  const response = await api.delete("/trucks/" + truckId);
   return response.data;
 };
+
+
+// -------------------------------------------------
+// Shipments
+// -------------------------------------------------
 
 export const getShipments = async () => {
   const response = await api.get("/shipments/");
@@ -148,39 +144,59 @@ export const createShipment = async (shipmentData) => {
 };
 
 export const updateShipment = async (loadId, shipmentData) => {
-  const response = await api.put(`/shipments/${loadId}`, shipmentData);
+  const response = await api.put("/shipments/" + loadId, shipmentData);
   return response.data;
 };
 
 export const deleteShipment = async (loadId) => {
-  const response = await api.delete(`/shipments/${loadId}`);
+  const response = await api.delete("/shipments/" + loadId);
   return response.data;
 };
 
-export const getTruckDecision = async (truckId) => {
-  const response = await api.get(`/backhaul/decision/${truckId}`);
-  return response.data;
-};
 
-export const getLatestTruckLocation = async (truckId) => {
-  const response = await api.get(`/locations/truck/${truckId}/latest`);
-  return response.data;
-};
+// -------------------------------------------------
+// Assignments
+// -------------------------------------------------
 
 export const getAssignments = async () => {
   const response = await api.get("/assignments/");
   return response.data;
 };
 
+
+// -------------------------------------------------
+// Locations
+// -------------------------------------------------
+
+export const getLatestTruckLocation = async (truckId) => {
+  const response = await api.get("/locations/truck/" + truckId + "/latest");
+  return response.data;
+};
+
+
+// -------------------------------------------------
+// Backhaul / decisions
+// -------------------------------------------------
+
+export const getTruckDecision = async (truckId) => {
+  const response = await api.get("/backhaul/decision/" + truckId);
+  return response.data;
+};
+
 export const getBaselineVsAI = async (truckId) => {
-  const response = await api.get(`/backhaul/baseline-vs-ai/${truckId}`);
+  const response = await api.get("/backhaul/baseline-vs-ai/" + truckId);
   return response.data;
 };
 
 export const getBackhaulMatches = async (truckId) => {
-  const response = await api.get(`/backhaul/match/${truckId}`);
+  const response = await api.get("/backhaul/match/" + truckId);
   return response.data;
 };
+
+
+// -------------------------------------------------
+// Simulator
+// -------------------------------------------------
 
 export const runSimulator = async () => {
   const response = await api.post("/simulator/run");
@@ -191,5 +207,79 @@ export const getSimulatorStatus = async () => {
   const response = await api.get("/simulator/status");
   return response.data;
 };
+
+
+// -------------------------------------------------
+// Drivers
+// -------------------------------------------------
+
+export const getDrivers = async () => {
+  const response = await api.get("/drivers/");
+  return response.data;
+};
+
+export const createDriver = async (driverData) => {
+  const response = await api.post("/drivers/", driverData);
+  return response.data;
+};
+
+export const updateDriver = async (driverId, driverData) => {
+  const response = await api.put("/drivers/" + driverId, driverData);
+  return response.data;
+};
+
+export const deleteDriver = async (driverId) => {
+  const response = await api.delete("/drivers/" + driverId);
+  return response.data;
+};
+
+export const assignDriverToTruck = async (driverId, truckId) => {
+  const response = await api.put(
+    "/drivers/" + driverId + "/assign-truck",
+    { truck_id: truckId }
+  );
+  return response.data;
+};
+
+export const unassignDriverFromTruck = async (driverId) => {
+  const response = await api.delete(
+    "/drivers/" + driverId + "/assign-truck"
+  );
+  return response.data;
+};
+
+export const markRestTaken = async (driverId) => {
+  const response = await api.post("/drivers/" + driverId + "/rest-taken");
+  return response.data;
+};
+
+
+// -------------------------------------------------
+// Rest Facilities
+// -------------------------------------------------
+
+export const getRestFacilities = async () => {
+  const response = await api.get("/rest-facilities/");
+  return response.data;
+};
+
+export const createRestFacility = async (payload) => {
+  const response = await api.post("/rest-facilities/", payload);
+  return response.data;
+};
+
+export const importRestFacilitiesCsv = async (filename) => {
+  const response = await api.post(
+    "/rest-facilities/import-csv",
+    { filename }
+  );
+  return response.data;
+};
+
+export const deleteRestFacility = async (facilityId) => {
+  const response = await api.delete("/rest-facilities/" + facilityId);
+  return response.data;
+};
+
 
 export default api;

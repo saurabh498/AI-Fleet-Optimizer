@@ -6,7 +6,9 @@ import { useAuth } from "../context/AuthContext";
 const ALL_NAV = [
   { to: "/", label: "Dashboard", icon: "⌂", roles: ["admin", "manager", "driver"] },
   { to: "/trucks", label: "Fleet", icon: "▣", roles: ["admin", "manager", "driver"] },
+  { to: "/drivers", label: "Drivers", icon: "🧑‍✈️", roles: ["admin", "manager", "driver"] },
   { to: "/shipments", label: "Shipments", icon: "□", roles: ["admin", "manager", "driver"] },
+  { to: "/rest-facilities", label: "Facilities", icon: "🏠", roles: ["admin", "manager", "driver"] },
   { to: "/ai-recommendations", label: "AI Intelligence", icon: "✦", roles: ["admin", "manager", "driver"] },
   { to: "/analytics", label: "Analytics", icon: "◫", roles: ["admin", "manager"] },
 ];

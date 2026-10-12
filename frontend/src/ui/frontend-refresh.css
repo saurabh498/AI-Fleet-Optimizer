@@ -458,3 +458,288 @@
     transform: rotate(360deg);
   }
 }
+
+/* ============================================================
+   Drivers page
+   ============================================================ */
+
+.driver-header,
+.driver-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 1fr 0.8fr 0.9fr 0.7fr 100px;
+  gap: 12px;
+  align-items: center;
+  min-width: 1050px;
+}
+
+.driver-table {
+  margin-top: 24px;
+  overflow-x: auto;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: white;
+}
+
+.driver-table .table-header {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #344054;
+  border-bottom: 1px solid #e4e7ec;
+  padding: 12px 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.driver-table .table-row {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef2f6;
+  font-size: 14px;
+}
+
+.driver-table .table-row:last-child {
+  border-bottom: none;
+}
+
+.rest-yes {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.rest-no {
+  color: #475467;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 11px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  background: white;
+}
+
+.checkbox-row input {
+  width: auto;
+}
+
+.form-note {
+  margin-top: 18px;
+  padding: 12px 14px;
+  background: #fffaeb;
+  border-radius: 9px;
+  color: #7a2e0b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.form-note code {
+  background: rgba(122, 46, 11, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.row-subnote {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.table-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #667085;
+  font-size: 14px;
+}
+
+/* ============================================================
+   Rest Facilities page
+   ============================================================ */
+
+.facility-header,
+.facility-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.1fr 0.8fr 0.9fr 1.1fr 70px;
+  gap: 12px;
+  align-items: center;
+  min-width: 1150px;
+}
+
+.facility-table {
+  margin-top: 24px;
+  overflow-x: auto;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: white;
+}
+
+.facility-table .table-header {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #344054;
+  border-bottom: 1px solid #e4e7ec;
+  padding: 12px 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.facility-table .table-row {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef2f6;
+  font-size: 14px;
+}
+
+.facility-table .table-row:last-child {
+  border-bottom: none;
+}
+
+.facility-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: fit-content;
+}
+
+.facility-status.verified {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.facility-status.pending {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.facility-status.retired {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.source-link {
+  display: block;
+  color: #175cd3;
+  font-weight: 600;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.import-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+.import-form input {
+  flex: 1;
+  padding: 11px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  font-size: 14px;
+  background: white;
+}
+
+.import-result {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.import-rejected {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(4, 120, 87, 0.3);
+  color: #7a2e0b;
+}
+
+.import-rejected ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.import-rejected li {
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ============================================================
+   AI card additions — driver + rest facility panels
+   ============================================================ */
+
+.driver-panel,
+.rest-facility-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+.driver-panel.feasible {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.driver-panel.infeasible {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.rest-facility-panel {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.driver-reason {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(100, 116, 139, 0.25);
+  font-size: 0.85rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.driver-unverified,
+.rest-facility-warning {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.driver-unverified {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+
+.rest-facility-warning {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.rest-facility-name {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
