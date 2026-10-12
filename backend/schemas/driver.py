@@ -66,3 +66,13 @@ class DriverFeasibilityResponse(BaseModel):
     requires_review: bool
     missing_data: list[str]
     rules_verified_against_law: bool
+
+class DriverAssignRequest(BaseModel):
+    truck_id: int
+
+
+class DriverRestTakenResponse(BaseModel):
+    driver_id: int
+    last_rest_time: str
+    accumulated_since_last_rest_minutes: int
+    rest_required: bool
