@@ -421,6 +421,64 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
+---
+
+## 📋 Feature Status
+
+This project is a **college major project prototype**. To avoid overstating
+what works, features are labelled precisely.
+
+### ✅ Implemented and tested
+
+- Truck & shipment CRUD with RBAC (admin / manager / driver)
+- JWT auth (access + refresh)
+- Backhaul matching with capacity, distance, revenue, utilization scoring
+- Real road distances via OSRM with Postgres cache and Haversine fallback
+- ML demand + waiting-time prediction (XGBoost, Random Forest, Linear Regression)
+- SHAP explainability on every prediction
+- Cost model (fuel / driver / toll / maintenance) and CO2 estimates
+- OR-Tools fleet assignment
+- Decision engine: `ASSIGN_NOW`, `REVIEW`, `WAIT`, `REPOSITION`, `RETURN_EMPTY`
+- Driver entity + feasibility check (availability, rest, driving-hour limits)
+- Driver-hours accumulation on trip completion
+- Rest-facility entity + CSV importer with mandatory provenance
+- Rest-facility suggestion as an annotation on `WAIT` / `REPOSITION`
+- 115 backend tests, all passing
+
+### 🟡 Proposed (designed, not yet built)
+
+- Frontend Driver management page
+- Frontend Rest-facility map markers
+- Structured external-search brief generator
+- Frontend panel showing driver + facility fields from the API
+
+### 🔵 Future scope
+
+- Live telematics integration
+- Legally verified driving-hour rules
+- Live facility availability data
+- WebSocket live truck tracking
+- Multi-depot VRPTW
+- Cloud deployment
+
+### ⚠️ Honesty flags
+
+- **Driver rules are not legally verified.** `config/driver_rules.yaml`
+  ships with `verified_against_law: false`, and every feasibility response
+  carries this flag.
+- **CO2 is modelled**, not measured. See `docs/assumptions.md`.
+- **No facility rows are shipped.** The CSV importer requires `source_url`
+  and `source_date` on every row; no coordinates are invented.
+- **No external load-board integration.** Internal search only.
+- **No fabricated GPS or facility data.**
+
+See [`docs/architecture_update.md`](docs/architecture_update.md),
+[`docs/assumptions.md`](docs/assumptions.md), and
+[`docs/driver_and_facility_notes.md`](docs/driver_and_facility_notes.md)
+for details.
+
+---
+
 ## Author
 
 **Saurabh** — [GitHub](https://github.com/saurabh498)
