@@ -1,6 +1,8 @@
 from backend.services.best_backhaul import select_best_backhaul
 from backend.services.ml_decision_context import build_ml_decision_context
-
+from backend.services.driver_decision_context import (
+    build_driver_decision_context,
+)
 
 # -------------------------------------------------
 # SHAP helper
@@ -380,6 +382,19 @@ def generate_assignment_decision(
         # Final no-match response
         # -------------------------------------------------
 
+        _driver_context = None
+        try:
+            _driver_context = build_driver_decision_context(
+                truck_id, None, db
+            )
+        except Exception as exc:
+            _driver_context = {
+                "feasible": None,
+                "reason": f"Driver check failed: {exc}",
+                "requires_review": True,
+                "missing_data": ["driver_check_error"],
+            }
+
         return {
             "truck_id": truck_id,
             "decision": decision,
@@ -391,7 +406,8 @@ def generate_assignment_decision(
             ),
             "ml_decision": ml_decision,
             "ml_explanation": ml_explanation,
-            "ml_context": ml_context
+            "ml_context": ml_context,
+            "driver_feasibility": _driver_context,
         }
 
     # -------------------------------------------------
@@ -463,6 +479,28 @@ def generate_assignment_decision(
     ml_explanation["shap"] = _shap_from_context(ml_context)
 
     # -------------------------------------------------
+    # Driver feasibility check
+    # -------------------------------------------------
+
+    _driver_context = None
+    try:
+        _driver_context = build_driver_decision_context(
+            truck_id, best_match, db
+        )
+    except Exception as exc:
+        _driver_context = {
+            "feasible": None,
+            "reason": f"Driver check failed: {exc}",
+            "requires_review": True,
+            "missing_data": ["driver_check_error"],
+        }
+
+    _driver_blocks = (
+        _driver_context is not None
+        and _driver_context.get("feasible") is False
+    )
+
+    # -------------------------------------------------
     # Final decision
     # -------------------------------------------------
 
@@ -472,17 +510,23 @@ def generate_assignment_decision(
         and estimated_profit > 0
     ):
 
-        decision = "ASSIGN_NOW"
-
-        action = (
-            "Assign this shipment to the truck"
-        )
-
-        reason = (
-            "The shipment has a strong overall decision "
-            "score, excellent route efficiency and positive "
-            "estimated profit."
-        )
+        if _driver_blocks:
+            decision = "REVIEW"
+            action = (
+                "Review before assignment - driver not available"
+            )
+            reason = (
+                f"Truck and shipment are viable, but driver "
+                f"check failed: {_driver_context['reason']}"
+            )
+        else:
+            decision = "ASSIGN_NOW"
+            action = "Assign this shipment to the truck"
+            reason = (
+                "The shipment has a strong overall decision "
+                "score, excellent route efficiency and positive "
+                "estimated profit."
+            )
 
     elif (
         ml_adjusted_score >= 100
@@ -492,14 +536,20 @@ def generate_assignment_decision(
 
         decision = "REVIEW"
 
-        action = (
-            "Review the shipment before assignment"
-        )
-
-        reason = (
-            "The shipment is financially viable but "
-            "requires additional review before assignment."
-        )
+        if _driver_blocks:
+            action = (
+                "Review before assignment - driver not available"
+            )
+            reason = (
+                "The shipment is financially viable, but "
+                f"driver check failed: {_driver_context['reason']}"
+            )
+        else:
+            action = "Review the shipment before assignment"
+            reason = (
+                "The shipment is financially viable but "
+                "requires additional review before assignment."
+            )
 
     else:
 
@@ -545,5 +595,6 @@ def generate_assignment_decision(
             "predicted_waiting_time": predicted_waiting_time
         },
         "ml_explanation": ml_explanation,
-        "ml_context": ml_context
+        "ml_context": ml_context,
+        "driver_feasibility": _driver_context,
     }
