@@ -14,6 +14,7 @@ from backend.models.assignment_history import AssignmentHistory
 from backend.services.reoptimization import reoptimize_fleet
 from backend.services.fleet_assignment_executor import execute_fleet_assignments
 from backend.services.arrival_detection import detect_arrival
+from backend.services.driver_hours import apply_completion_to_driver
 
 router = APIRouter(
     prefix="/assignments",
@@ -588,6 +589,17 @@ def complete_assignment(
     db.refresh(shipment)
 
     # -------------------------------------------------
+    # 9b. Driver hours tracking
+    # -------------------------------------------------
+
+    driver_update = None
+    try:
+        driver_update = apply_completion_to_driver(assignment, db)
+    except Exception as exc:
+        # Never let driver-hours tracking break completion
+        print(f"[driver_hours] hook failed: {exc}")
+
+    # -------------------------------------------------
     # 10. Re-optimize fleet after completion
     # -------------------------------------------------
 
@@ -658,7 +670,9 @@ def complete_assignment(
 
         "reoptimization": reoptimization,
 
-        "automatic_execution": automatic_execution
+        "automatic_execution": automatic_execution,
+
+        "driver_update": driver_update,
     }
 
 @router.get("/{assignment_id}/arrival")

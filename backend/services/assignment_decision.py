@@ -3,6 +3,9 @@ from backend.services.ml_decision_context import build_ml_decision_context
 from backend.services.driver_decision_context import (
     build_driver_decision_context,
 )
+from backend.services.rest_facility_recommendation import (
+    suggest_rest_facility,
+)
 
 # -------------------------------------------------
 # SHAP helper
@@ -395,6 +398,21 @@ def generate_assignment_decision(
                 "missing_data": ["driver_check_error"],
             }
 
+        _rest_suggestion = None
+        try:
+            _rest_suggestion = suggest_rest_facility(
+                truck_id, decision, db
+            )
+        except Exception as exc:
+            _rest_suggestion = {
+                "recommended_action_label": None,
+                "facility": None,
+                "alternatives": [],
+                "requires_review": True,
+                "reason": f"Rest suggestion failed: {exc}",
+                "rest_trigger": "error",
+            }
+
         return {
             "truck_id": truck_id,
             "decision": decision,
@@ -408,6 +426,7 @@ def generate_assignment_decision(
             "ml_explanation": ml_explanation,
             "ml_context": ml_context,
             "driver_feasibility": _driver_context,
+            "rest_facility_suggestion": _rest_suggestion,
         }
 
     # -------------------------------------------------
@@ -501,6 +520,13 @@ def generate_assignment_decision(
     )
 
     # -------------------------------------------------
+    # Rest facility suggestion (populated below, once
+    # decision is determined, for matched cases).
+    # -------------------------------------------------
+
+    _rest_suggestion = None
+
+    # -------------------------------------------------
     # Final decision
     # -------------------------------------------------
 
@@ -565,6 +591,24 @@ def generate_assignment_decision(
         )
 
     # -------------------------------------------------
+    # Rest facility annotation (WAIT / REPOSITION only)
+    # -------------------------------------------------
+
+    try:
+        _rest_suggestion = suggest_rest_facility(
+            truck_id, decision, db
+        )
+    except Exception as exc:
+        _rest_suggestion = {
+            "recommended_action_label": None,
+            "facility": None,
+            "alternatives": [],
+            "requires_review": True,
+            "reason": f"Rest suggestion failed: {exc}",
+            "rest_trigger": "error",
+        }
+
+    # -------------------------------------------------
     # Final response
     # -------------------------------------------------
 
@@ -597,4 +641,5 @@ def generate_assignment_decision(
         "ml_explanation": ml_explanation,
         "ml_context": ml_context,
         "driver_feasibility": _driver_context,
+        "rest_facility_suggestion": _rest_suggestion,
     }
